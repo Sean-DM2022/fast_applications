@@ -1,0 +1,205 @@
+# This script automates the process of tailoring a resume and saves it for review
+
+# Module Imports
+import os
+from dotenv import load_dotenv
+from flask import Flask, request, jsonify
+import json
+import docx
+from google import genai
+from google.genai import types
+from datetime import datetime
+
+# Keys & Passwords
+load_dotenv()
+notion_api_key = os.getenv("notion_local_api_key")
+gemini_api_key = os.getenv("gemini_local_api_key")
+my_client_password = os.getenv("my_local_client_password")
+
+# Setup:
+app = Flask(__name__)
+
+my_name = "Sean Modawell"
+now = datetime.now()
+current_month = now.month
+current_year = now.year
+
+# AI_prompt
+def create_ai_prompt(notion_job_description, base_resume_text):
+    my_ai_prompt = f"""
+I need help tailoring my resume to a specific job posting. This response will be used in an automation. As such, respond in JSON format ONLY. A template is provided below.
+
+Below is the target job description I am applying for and my resume. Please check the job description for keywords that ATS and Hiring Managers are most likely to be looking for. Create a list of these. Create a separate list of the ones missing from my resume. Only suggest changes to my Job title, introduction paragraph, and/or skills section. Do NOT suggest any changes to the bullets under my experience.
+
+- The introduction paragraph should be limited to 485 characters. This is for spacing and format.
+- The total skill section (not including "Languages: English (Native) | Spanish (Fluent)") should be limited to 240 characters. This is for spacing and format. Match existing format.
+- Suggestions should focus on missing keywords.
+- Please include "automation" in the introduction paragraph. I want Hiring Managers to know I have experience creating automation/automated workflows.
+- Please include "AI" under skills. (i.e. GenAI, AI-powered automation, OpenAI, etc.)
+- Do NOT suggest changes that lack evidence or are unreasonable (i.e. The user has not worked in the GovTech or LegalTech industry)
+- Tools that are similar can be substituted for one another to better align with the job description (i.e. Excel or Google Sheets are both Spreadsheets. Salesforce and HubSpot are both CRMs).
+- Attempt to replace/add/delete words and phrases rather than re-writing sentences. Only re-write if necessary.
+- Keep the following as the first sentence to the intro: "Customer-centric Implementation and Onboarding professional with 7+ years of experience in B2B SaaS and [Industry]"
+- Industry in the introduction paragraph should default to "IT" or "FinTech"
+
+Job Description:
+[
+{notion_job_description}
+]
+
+Resume:
+[
+{base_resume_text}
+]
+
+Output Template:
+
+template_data = {{
+    "intro_paragraph": "enter text here",
+    "keywords_list": [
+        "Product Management",
+        "Revenue Operations",
+        "Cross-functional Leadership"
+    ],
+    "missing_keywords": [
+        "Go-to-Market Strategy",
+        "Data Analytics",
+        "Stakeholder Alignment"
+    ],
+    "skills": "enter text here",
+}} 
+    """
+    print("Prompt created successfully!")
+    return my_ai_prompt
+
+
+# --- Helper Functions ---
+def scrape_resume(file_name):
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+    file_path = os.path.join(script_directory, file_name)
+    doc = docx.Document(file_path)
+    full_text = []
+    # Loop through every paragraph in the Word document
+    for para in doc.paragraphs:
+        full_text.append(para.text)
+    # Join all the paragraphs together with a "newline" (\n) in between them
+    return '\n'.join(full_text)
+
+
+def extract_json_data(incoming_data):
+    try:
+        notion_record_id = incoming_data.get("record_id")
+        notion_job_title = incoming_data.get("job_title", "Unknown Title")
+        notion_company = incoming_data.get("company", "Unknown Company")
+        notion_job_url = incoming_data.get("job_url", "No URL provided")
+        notion_job_description = incoming_data.get("job_description", "No Description provided")
+        print("Successfully parsed JSON")
+        return notion_record_id, notion_job_title, notion_company, notion_job_url, notion_job_description
+
+    except json.JSONDecodeError:
+        print("Failed to parse JSON")
+        return "", "", "", "", ""
+
+
+def tailor_resume(notion_job_title, notion_company, notion_job_description, my_base_resume):
+    print(f"Preparing to tailor resume for: {notion_job_title} at {notion_company}")
+
+    print(f"Starting AI build for: {notion_job_title}")
+    base_resume_text = scrape_resume("my_base_resume.docx")
+
+    print("Successfully extracted resume text!")
+    print("Configuring AI...")
+    client = genai.Client(api_key=gemini_api_key)
+
+    ai_prompt = create_ai_prompt(notion_job_description, my_base_resume)
+    print("Sending prompt to Gemini. Please wait...")
+    try:
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=ai_prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json"
+            )
+        )
+        print("\n--- AI Response ---")
+        print(response.text)
+        print("-------------------\n")
+
+        try:
+            ai_data = json.loads(response.text)
+
+            new_intro = ai_data.get("intro_paragraph", "")
+            keywords_list = ai_data.get("keywords_list", [])
+            missing_keywords = ai_data.get("missing_keywords", [])
+            skills = ai_data.get("skills", "")
+            print("Successfully parsed AI response!")
+            return new_intro, keywords_list, missing_keywords, skills
+
+        except json.JSONDecodeError as json_err:
+            print(f"Failed to parse AI response: {json_err}")
+            print("Adjust your prompt to not include conversational text.")
+    
+    except Exception as err:
+        print(f"AI call failed: {err}")
+
+
+
+def create_revised_resume(template_filename, new_intro, skills):
+    doc = docx.Document(template_filename)
+    
+    # Replaces text at the paragraph level. 
+    # Note: This overwrites specific run-level formatting (like an isolated bold word) 
+    # within the target paragraph, adopting the paragraph's default style.
+    for para in doc.paragraphs:
+        if "{{SKILLS_TAG}}" in para.text:
+            para.text = para.text.replace("{{JOB_TITLE_TAG}}", notion_job_title)
+
+        if "{{INTRO_TAG}}" in para.text:
+            para.text = para.text.replace("{{INTRO_TAG}}", new_intro)
+            
+        if "{{SKILLS_TAG}}" in para.text:
+            para.text = para.text.replace("{{SKILLS_TAG}}", new_skills)
+
+    output_filename = (f"{my_name} - {notion_company} Resume - {current_month} {current_year}")
+            
+    doc.save(output_filename)
+    return output_filename
+
+# Example usage inside your tailor_resume function:
+# final_resume_path = create_revised_resume("my_base_resume_template.docx", f"Tailored_Resume_{notion_company}.docx", new_intro, skills)
+
+
+
+
+# --- Main Webhook ---
+my_secret_api_key = "Insert key here"
+@app.route('/api/v1/resume-build', methods=['POST'])
+def handle_wekbhook():
+    provided_key = request.headers.get('Authorization')
+    if provided_key != f"Bearer {my_client_password}":
+        return jsonify({"status": "error", "message": "Unauthorized request"}), 401
+
+    incoming_data = request.json
+    if not incoming_data:
+        return jsonify({"status": "error", "message": "No data provided"}), 400
+
+    print("Call received! Data payload:", incoming_data)
+    print("Extracting data...")
+    notion_record_id, notion_job_title, notion_company, notion_job_url, notion_job_description = extract_json_data(incoming_data)
+
+    new_intro, keywords_list, missing_keywords, skills = tailor_resume(notion_job_title, notion_company, notion_job_description, my_base_resume)
+    print("")
+    create_revised_resume
+
+    return jsonify({"status": "success", "message": "Processing data"}), 200
+
+if __name__ == '__main__':
+    print("Starting local server on port 5000...")
+    app.run(port=5000)
+
+
+
+# Create Google Doc
+# Step 9: Save resume and pull URL
+# Step 10: Generate API call to send to Notion
+# Step 11: Send API call to Notion
