@@ -1,0 +1,5 @@
+# List files I want GitHub to ignore
+.env
+.venv
+
+__pycache__/
