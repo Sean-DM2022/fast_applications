@@ -1,6 +1,5 @@
 # List files I want GitHub to ignore
 .env
 .venv
-old_script.txt
 
 __pycache__/
