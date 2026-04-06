@@ -1,0 +1,41 @@
+I need help tailoring my resume to a specific job posting. This response will be used in an automation. As such, respond in JSON format ONLY. A template is provided below.
+
+Below is the target job description I am applying for and my resume. Please check the job description for keywords that ATS and Hiring Managers are most likely to be looking for. Create a list of these. Create a separate list of the ones missing from my resume. Only suggest changes to my Job title, introduction paragraph, and/or skills section. Do NOT suggest any changes to the bullets under my experience.
+
+- The introduction paragraph should be limited to 485 characters. This is for spacing and format.
+- The total skill section (not including "Languages: English (Native) | Spanish (Fluent)") should be limited to 240 characters. This is for spacing and format. Match existing format.
+- Suggestions should focus on missing keywords.
+- Please include "automation" in the introduction paragraph. I want Hiring Managers to know I have experience creating automation/automated workflows.
+- Please include "AI" under skills. (i.e. GenAI, AI-powered automation, OpenAI, etc.)
+- Do NOT suggest changes that lack evidence or are unreasonable (i.e. The user has not worked in the GovTech or LegalTech industry)
+- Tools that are similar can be substituted for one another to better align with the job description (i.e. Excel or Google Sheets are both Spreadsheets. Salesforce and HubSpot are both CRMs).
+- Attempt to replace/add/delete words and phrases rather than re-writing sentences. Only re-write if necessary.
+- Keep the following as the first sentence to the intro: "Customer-centric Implementation and Onboarding professional with 7+ years of experience in B2B SaaS and [Industry]"
+- Industry in the introduction paragraph should default to "IT" or "FinTech"
+
+Job Description:
+[
+{{notion_job_description}}
+]
+
+Resume:
+[
+{{base_resume_text}}
+]
+
+Output Template:
+
+template_data = {{
+    "intro_paragraph": "enter text here",
+    "keywords_list": [
+        "Product Management",
+        "Revenue Operations",
+        "Cross-functional Leadership"
+    ],
+    "missing_keywords": [
+        "Go-to-Market Strategy",
+        "Data Analytics",
+        "Stakeholder Alignment"
+    ],
+    "skills": "enter text here",
+}} 

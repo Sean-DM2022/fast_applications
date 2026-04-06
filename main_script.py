@@ -42,9 +42,15 @@ def extract_json_data(incoming_data): # Process the API call from Notion
     pass
 
 def scrape_resume(google_doc_url): # Pull Resume TEXT from Google Drive
+    return resume_text
     pass
 
-def create_ai_prompt(): # Call prompt template, insert current resume TEXT and job description TEXT
+def create_ai_prompt(job_description, resume_text): # Call prompt.txt, insert current resume TEXT and job description TEXT
+    with open("prompt.txt", "r") as f:
+        prompt = f.read()
+    prompt = prompt.replace("{{job_description}}", job_description)
+    prompt = prompt.replace("{{resume_text}}", resume_text)
+    return prompt
     pass
 
 def send_ai_prompt(ai_prompt): # Send & Receive
