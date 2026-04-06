@@ -45,21 +45,21 @@ def scrape_resume(google_doc_url): # Pull Resume TEXT from Google Drive
     return resume_text
     pass
 
-def create_ai_prompt(job_description, resume_text): # Call prompt.txt, insert current resume TEXT and job description TEXT
-    with open("prompt.txt", "r") as f:
+def create_prompt(job_description, resume_text, prompt_file="prompt.txt"): # Call prompt.txt, insert current resume TEXT and job description TEXT
+    with open(prompt_file, "r") as f:
         prompt = f.read()
     prompt = prompt.replace("{{job_description}}", job_description)
     prompt = prompt.replace("{{resume_text}}", resume_text)
     return prompt
-    pass
+# Add a try/exception to make sure the job_description and resume_text are not blank.
 
-def send_ai_prompt(ai_prompt): # Send & Receive
+def send_prompt(prompt): # Send & Receive
     client = genai.Client(api_key=gemini_api_key)
     print("Sending prompt to Gemini. Please wait...")
     try:
         response = client.models.generate_content(
             model='gemini-2.5-flash',
-            contents=ai_prompt,
+            contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json"
             )
@@ -107,8 +107,8 @@ def handle_wekbhook():
 
     extract_json_data(incoming_data)
     scrape_resume()
-    create_ai_prompt()
-    send_ai_prompt()
+    create_prompt()
+    send_prompt()
     create_tailored_resume()
     outgoing_data = create_payload()
     send_payload(outgoing_data)

@@ -1,0 +1,1 @@
+Job: {{job_description}} Resume: {{resume_text}}
