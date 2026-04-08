@@ -15,10 +15,16 @@ load_dotenv()
 notion_api_key = os.getenv("notion_local_api_key")
 gemini_api_key = os.getenv("gemini_local_api_key")
 my_client_password = os.getenv("my_local_client_password")
+google_drive_api_key = os.getenv("enter key here")
+
+# --- Configuration File ---
+with open("config.json", "r") as f:
+    config = json.load(f)
+
+my_name = config["my_name"]
 
 # --- Initial Setup ---
 app = Flask(__name__)
-my_name = "Sean Modawell"
 now = datetime.now()
 current_month = now.month
 current_year = now.year
@@ -39,7 +45,7 @@ def extract_json_data(incoming_data): # Process the API call from Notion
 
     except json.JSONDecodeError:
         print("Failed to parse JSON")
-    pass
+        return None
 
 def scrape_resume(google_doc_url): # Pull Resume TEXT from Google Drive
     return resume_text
@@ -79,9 +85,11 @@ def send_prompt(prompt): # Send & Receive
         except json.JSONDecodeError as json_err:
             print(f"Failed to parse AI response: {json_err}")
             print("Adjust your prompt to not include conversational text.")
+            return None
     
     except Exception as err:
         print(f"AI call failed: {err}")
+        return None
     pass
 
 def create_tailored_resume(): # Create new google doc from template and save URL
@@ -105,11 +113,28 @@ def handle_wekbhook():
     if not incoming_data:
         return jsonify({"status": "error", "message": "No data provided"}), 400
 
-    extract_json_data(incoming_data)
-    scrape_resume()
-    create_prompt()
-    send_prompt()
+    result = extract_json_data(incoming_data)
+    if result is None:
+        return jsonify({"status": "error", "message": "Failed to parse data"}), 400
+    notion_record_id, notion_job_title, notion_company, notion_job_url, notion_job_description = result
+
+    result = scrape_resume()
+    if result is None:
+        return jsonify({"status": "error", "message": "Failed to pull resume"}), 400
+    resume_text = result
+
+    result = create_prompt(notion_job_description, resume_text, prompt_file="prompt.txt")
+    if result is None:
+        return jsonify({"status": "error", "message": "Failed to create prompt"}), 400
+    prompt = result
+
+    result = send_prompt(prompt)
+    if result is None:
+        return jsonify({"status": "error", "message": "AI call failed"}), 400
+    new_intro, keywords_list, missing_keywords, skills = result
+    
     create_tailored_resume()
+
     outgoing_data = create_payload()
     send_payload(outgoing_data)
 
