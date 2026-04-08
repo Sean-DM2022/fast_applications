@@ -1,78 +1,146 @@
 # fast_applications
 
-# Intro
+An automation pipeline for tailoring resumes to job postings using Notion, Google Gemini, and Google Drive.
 
-This script was originally designed for automating the process of tailoring resumes for job applications. It does so using the following app tools:
-- Database: Notion (for its free API and ease of use for project management applications)
-- Browser Extension: "Save to Notion" (This is how I added tasks to the workflow)
-- Cloud Drive: Google Drive (Free api and ability to create documents)
-- Host Server: Render (Free api and free tier for simple applications. Can be hosted locally)
-- GenAI: Google Gemini: (Free API and use tier for their flash model. ChatGPT at the time of this script being created no longer had a free use tier)
+-----
 
-You will need to do a little setup for it to work on your own. This involve:
-- Finding your API keys
-- 
+## Overview
 
-## Scalability
+Job applications are time-consuming. This script automates the most tedious part: reading a job posting and getting AI-powered suggestions for how to tailor your resume to it.
 
-I plan to make this script as scalable and customizable as possible. This means that you will be able to adjust for:
-- Names of database fields
-- Total number of fields
-- The prompt sent to the AI
-- The number of fields you wish to update on your form
+The workflow:
 
-What will not be easily scalable at this point:
-- GenAI selection: limited to Google Gemini
-- Document Storage: Google Drive
-- Type of document used: Google Doc (NOT MS Word - aka .docx)
+1. You save a job posting to Notion using the **Save to Notion** browser extension
+1. Notion sends a webhook to this app
+1. The app pulls the job data, fetches your base resume from Google Drive, and sends everything to **Google Gemini**
+1. Gemini returns structured tailoring suggestions
+1. The results are saved to a new **Google Doc** for your review before applying
+
+The app is built with **Flask** and can be hosted locally or on a free [Render](https://render.com/) instance.
+
+-----
+
+## Tools Used
+
+|Purpose             |Tool                      |Why                                     |
+|--------------------|--------------------------|----------------------------------------|
+|Task/job database   |Notion                    |Free API, great for project management  |
+|Browser clipping    |Save to Notion (extension)|Easy way to add jobs to the workflow    |
+|Resume + doc storage|Google Drive / Google Docs|Free API, dynamic and easy to update    |
+|AI suggestions      |Google Gemini (Flash)     |Free API tier; ChatGPT no longer has one|
+|Server hosting      |Render                    |Free tier for personal apps             |
+|Web framework       |Flask                     |Lightweight; supports local hosting too |
+
+-----
+
+## File Reference
+
+### `.env`
+
+Stores your secret keys. **Never commit this file to version control.**
+
+Create a `.env` file in the root folder using this template:
 
 
-## Instructions
-
-Below I explain the use for each file in the root folder and how to make adjustments to the script without needing to touch the code. Please feel free to message me on GitHub should you have any questions.
-
-Create a ".env" file in the root folder. Use the following as a draft:
----
-# Local Storage of keys and passwords
+# Local storage of keys and passwords
 notion_local_api_key=
 gemini_local_api_key=
 my_local_client_password=
----
-
-## prompt.txt
-
-Here, you will type up the prompt you will want to send to the AI. No comments here. The whole file will be read and sent.
-
-TAGS
-
-tags should be surrounded by two curly brackets: {{tag_example}}
 
 
-## config.json
+### `prompt.txt`
 
-Here you will add information that is not importing from Notion.
+The prompt sent to Gemini. The entire contents of this file are read and submitted as-is — no comments are supported.
 
-
-## Initial Setup
-
-You will need the API keys for your notion and for the copy of Gemini you wish to use.
-You will also need to know the password you will be using for your client server.
-
-Create a ".env" file in the root folder and store your keys and passwords there.
+Use `{{double_curly_braces}}` for dynamic tags that get replaced at runtime. For example:
 
 
-
-## Where to place your resume
-
-I debated on where the best place to store your resume would be. Should it use a text file like it does for the prompt? I ultimately decided to go with having the script pull the resume text from a Google Doc, allowing for a more dynamic workflow. Your resume is more likely to change over time than the prompt.
-
-I use a base or general resume when submitting the prompt to the AI. When tailoring the resume with the AI suggestions, I use a copy of the base resume with the corresponding sections replaced with {{TAGS}} as my template. This makes for a more fluid experinece.
+Here is a job description: {{job_description}}
+Here is my resume: {{resume_text}}
 
 
+### `config.json`
+
+Configuration that doesn’t belong in `.env`. This is where you adjust things like Notion database field names or the number of fields you want to process — without touching the Python code.
+
+-----
+
+## Setup Instructions
+
+### 1. Get your API keys
+
+- **Notion**: Go to [notion.so/my-integrations](https://www.notion.so/my-integrations), create a new integration, and copy the secret key. Make sure your integration has access to the database you’re using.
+- **Gemini**: Go to [aistudio.google.com](https://aistudio.google.com) and generate an API key.
+- **Google Drive / Docs**: Set up a service account in the [Google Cloud Console](https://console.cloud.google.com/), enable the Drive and Docs APIs, and download the credentials JSON.
+- **Client password**: Choose any password. This is used to authenticate requests to your Flask server.
+
+### 2. Configure your `.env`
+
+Copy the template above into a new `.env` file in the root folder and fill in your keys.
+
+### 3. Set up your resume in Google Drive
+
+Store your **base resume** as a Google Doc. The script fetches it fresh on each run, so any updates you make to the doc are automatically picked up.
+
+For applying, it’s recommended to maintain a second Google Doc as a **template**, a copy of your base resume with sections replaced by `{{TAGS}}`. Gemini’s suggestions can then be slotted directly into the template.
+
+### 4. Write your prompt
+
+Edit `prompt.txt` with the instructions you want to send to Gemini. Use `{{tags}}` to reference dynamic values like the job description or your resume text. The quality of AI output depends heavily on prompt quality — see the note below.
+
+### 5. Configure `config.json`
+
+Adjust field names and settings to match your Notion database setup.
+
+-----
+
+## Hosting
+
+### Locally (Flask)
+
+Flask’s built-in server lets you run the app on your machine. Useful for testing or if you’re always on the same computer.
 
 
-## Hosting Locally vs a Server
+### On Render (recommended for portability)
 
-As I moved between computers often, I opted to host my script using <https://render.com/>. They have a free tier you can use for personal apps. Keep in mind that the server goes dormant with inactivity exceeding 15 mins. This just means there will be a delay while the server wakes up (30-60 seconds).
+[Render](https://render.com/) offers a free tier that works well for personal automation apps. Connect your GitHub repo and it will deploy automatically on each push.
 
-Flask allows you to host the server locally.
+> **Note:** Free Render instances go dormant after 15 minutes of inactivity. Expect a 30–60 second delay on the first webhook while the instance wakes up.
+
+-----
+
+## A Note on Prompt Design
+
+The quality of Gemini’s suggestions depends entirely on the quality of your prompt. Vague or incomplete prompts lead to unhelpful output, which defeats the purpose of this automation.
+
+A good prompt typically includes:
+
+- Clear instructions on what you want (e.g., “suggest edits to the bullet points under Experience”)
+- The full job description
+- Your base resume
+- The format you want the response in (the app expects structured JSON)
+
+Treat your `prompt.txt` as something worth iterating on. Small improvements to the prompt can have a big impact on the output.
+
+-----
+
+## What’s Configurable (Without Touching Code)
+
+**You can adjust:**
+
+- Notion database field names
+- Total number of fields processed
+- The prompt sent to Gemini
+- The number of output fields
+
+**Currently not configurable:**
+
+- AI provider (locked to Google Gemini)
+- Document storage (locked to Google Drive)
+- Document format (Google Docs only — not `.docx`)
+
+-----
+
+## Questions?
+
+Feel free to open an issue or reach out via GitHub. Contributions and suggestions are welcome.
