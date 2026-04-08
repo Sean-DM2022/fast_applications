@@ -90,7 +90,8 @@ def send_prompt(prompt): # Send & Receive
     except Exception as err:
         print(f"AI call failed: {err}")
         return None
-    pass
+# Add to the send_prompt function a retry loop in case of receiving a 503 error from Gemini
+# Add an API call if retries are exhausted to update the status to "need_to_rerun"
 
 def create_tailored_resume(): # Create new google doc from template and save URL
     pass
