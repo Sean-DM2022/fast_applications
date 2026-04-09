@@ -15,7 +15,6 @@ load_dotenv()
 notion_api_key = os.getenv("notion_local_api_key")
 gemini_api_key = os.getenv("gemini_local_api_key")
 my_client_password = os.getenv("my_local_client_password")
-google_drive_api_key = os.getenv("enter key here")
 
 # --- Configuration File ---
 with open("config.json", "r") as f:
@@ -54,8 +53,8 @@ def scrape_resume(google_doc_url): # Pull Resume TEXT from Google Drive
 def create_prompt(job_description, resume_text, prompt_file="prompt.txt"): # Call prompt.txt, insert current resume TEXT and job description TEXT
     with open(prompt_file, "r") as f:
         prompt = f.read()
-    prompt = prompt.replace("{{job_description}}", job_description)
-    prompt = prompt.replace("{{resume_text}}", resume_text)
+    prompt = prompt.replace("{{notion_job_description}}", job_description)
+    prompt = prompt.replace("{{base_resume_text}}", resume_text)
     return prompt
 # Add a try/exception to make sure the job_description and resume_text are not blank.
 
@@ -91,7 +90,7 @@ def send_prompt(prompt): # Send & Receive
         print(f"AI call failed: {err}")
         return None
 # Add to the send_prompt function a retry loop in case of receiving a 503 error from Gemini
-# Add an API call if retries are exhausted to update the status to "need_to_rerun"
+# Add an API call if retries are exhausted to update the status to "need_to_rerun".
 
 def create_tailored_resume(): # Create new google doc from template and save URL
     pass
@@ -105,7 +104,7 @@ def send_payload(outgoing_data): # Push API call to Notion
 
 # --- Main Webhook ---
 @app.route('/api/v1/resume-build', methods=['POST'])
-def handle_wekbhook():
+def handle_webhook():
     provided_key = request.headers.get('Authorization')
     if provided_key != f"Bearer {my_client_password}":
         return jsonify({"status": "error", "message": "Unauthorized request"}), 401

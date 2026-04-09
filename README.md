@@ -51,13 +51,13 @@ Stores your secret keys. **Never commit this file to version control.**
 
 Create a `.env` file in the root folder using this template:
 
-
+```
 # Local storage of keys and passwords
 notion_local_api_key=
 gemini_local_api_key=
 google_drive_local_api_key=
 my_local_client_password=
-
+```
 
 ### `prompt.txt`
 
