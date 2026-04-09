@@ -24,6 +24,13 @@ with open("config.json", "r") as f:
 
 my_name = config["my_name"]
 
+# --- Google Service Account ---
+SCOPES = ["https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/documents"]
+creds = service_account.Credentials.from_service_account_file("credentials.json", scopes=SCOPES)
+drive_service = build("drive", "v3", credentials=creds)
+docs_service = build("docs", "v1", credentials=creds)
+
+
 # --- Initial Setup ---
 app = Flask(__name__)
 now = datetime.now()
@@ -95,6 +102,20 @@ def send_prompt(prompt): # Send & Receive
 # Add an API call if retries are exhausted to update the status to "need_to_rerun".
 
 def create_tailored_resume(): # Create new google doc from template and save URL
+    # Copy the template Doc
+    template_id = config
+    copy_response = drive_service.files().copy(
+        fileId=template_id,
+        body=
+    ).execute()
+    new_doc_id = copy_response["id"]
+
+    # Replace {{tags}}
+
+    # Return URL
+    new_doc_url = f"https://docs.google.com/document/d/{new_doc_id}"
+    print(f"Tailored resume created: {new_doc_url}")
+    return new_doc_url
     pass
 
 def create_payload(): # Prepare JSON payload for Notion
