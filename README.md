@@ -6,7 +6,11 @@ An automation pipeline for tailoring resumes to job postings using Notion, Googl
 
 ## WORK IN PROGRESS
 
-This project is still in development. The core design is built and multiple functions are fully operational, having passed testing.
+This project is still in development. There are 7 helper functions to the main webhook.
+
+Current Status: 3 of 7 helper functions are fully written and tested.
+
+> **Note:** I remove `pass` from a function once it is complete and has passed pytest.
 
 -----
 
@@ -143,6 +147,8 @@ Treat your `prompt.txt` as something worth iterating on. Small improvements to t
 
 It is also worth testing your prompt directly on the [Gemini App](https://gemini.google.com/). This avoids wasting API tokens and allows you to easily adjust the prompt.
 
+I have worked through many iterations of my prompt to get it just right for me. This part takes time and experimentation.
+
 -----
 
 ## What’s Configurable (Without Touching Code)
@@ -170,9 +176,16 @@ Feel free to open an issue or reach out via GitHub. Contributions and suggestion
 
 ## Notes on my Process
 
-I am a self-taught software engineer. I am a project-based learner. This is my true first project in Python.
+This is a personal project to replace a MS Power Automate flow I created.
 
-Built in VS Codium with the help of Claude AI for accelerated learning and development.
-"REST Client" by Humao was used for API testing.
-
-This project is to replace the workflow automation I created using MS Power Automate. What took 45-60 minutes was reduced to 5 minutes or less. I learned the versatility of Python, and decided it was time to learn.
+The Steps to my project:
+1. Map the Process
+2. Write the framework for main webhook
+3. Create all stub functions
+4. Map the functions within the webhook
+5. Code a function and its dependencies
+6. Test/Debug the function
+7. Repeat steps 5 & 6 until script complete
+8. Complete Notion API setup
+9. Host script locally for end-to-end testing/debugging
+10. Deploy application on Render
