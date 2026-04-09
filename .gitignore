@@ -1,5 +1,7 @@
 # List files I want GitHub to ignore
 .env
 .venv
+google_service_account_key.json
+credentials.json
 
 __pycache__/

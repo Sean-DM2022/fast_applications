@@ -9,6 +9,8 @@ from datetime import datetime
 import json
 from google import genai
 from google.genai import types
+from googleapiclient.discovery import build
+from google.oauth2 import service_account
 
 # --- Keys ---
 load_dotenv()
