@@ -40,7 +40,7 @@ def test_extract_json_data_missing_fields():
 # --- create_prompt ---
 def test_create_prompt_full():
     test_job_description = "jobdescription4fun"
-    test_resume_text =  "resumetext4fun"
+    test_resume_text = "resumetext4fun"
     return_prompt = create_prompt(test_job_description, test_resume_text, prompt_file="tests/test_prompt.txt")
     assert return_prompt == "Job: jobdescription4fun Resume: resumetext4fun"
 
@@ -92,7 +92,29 @@ def test_send_prompt_real_api():
 
 
 # --- create_tailored_resume ---
-def test_create_tailored_resume():
-    test_job_title = "Software Engineer"
-    test_new_intro = "I am a Software Engineer"
-    test_skills = "Python | Automation"
+def test_create_tailored_resume_mock():
+    with (patch("main_script.drive_service") as mock_drive, patch("main_script.docs_service") as mock_docs):
+        mock_drive.files().copy().execute.return_value = {"id": "fake_doc_id_123"}
+        result = create_tailored_resume(
+            record_id="R2D2",
+            company="NOMA",
+            job_title="Software Engineer",
+            new_intro="I am a Software Engineer",
+            skills="Python | Automation"
+        )
+
+        assert result == "https://docs.google.com/document/d/fake_doc_id_123"
+        assert mock_drive.files().copy().execute.called
+        assert mock_docs.documents().batchUpdate().execute.called
+
+@pytest.mark.skip(reason="Real API call - run manually only")
+def test_create_tailored_resume_real():
+    result = create_tailored_resume(
+        record_id="R2D2",
+        company="NOMA",
+        job_title="Software Engineer",
+        new_intro="I am a Software Engineer",
+        skills="Python | Automation"
+    )
+    assert result is not None
+    assert result.startswith("https://docs.google.com/document/d/")

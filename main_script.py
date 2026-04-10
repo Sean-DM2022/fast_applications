@@ -14,7 +14,7 @@ from google.oauth2 import service_account
 
 # --- Keys ---
 load_dotenv()
-notion_api_key = os.getenv("notion_local_api_key")
+database_api_key = os.getenv("notion_local_api_key")
 gemini_api_key = os.getenv("gemini_local_api_key")
 my_client_password = os.getenv("my_local_client_password")
 
@@ -43,13 +43,13 @@ def extract_json_data(incoming_data): # Process the API call from Notion
     print("Call received! Data payload: ", incoming_data)
     print("Extracting data...")
     try:
-        notion_record_id = incoming_data.get("record_id")
-        notion_job_title = incoming_data.get("job_title", "Unknown Title")
-        notion_company = incoming_data.get("company", "Unknown Company")
-        notion_job_url = incoming_data.get("job_url", "No URL provided")
-        notion_job_description = incoming_data.get("job_description", "No Description provided")
+        record_id = incoming_data.get("record_id")
+        job_title = incoming_data.get("job_title", "Unknown Title")
+        company = incoming_data.get("company", "Unknown Company")
+        job_url = incoming_data.get("job_url", "No URL provided")
+        job_description = incoming_data.get("job_description", "No Description provided")
         print("Successfully parsed JSON")
-        return notion_record_id, notion_job_title, notion_company, notion_job_url, notion_job_description
+        return record_id, job_title, company, job_url, job_description
 
     except json.JSONDecodeError:
         print("Failed to parse JSON")
@@ -101,12 +101,12 @@ def send_prompt(prompt): # Send & Receive
 # Add to the send_prompt function a retry loop in case of receiving a 503 error from Gemini
 # Add an API call if retries are exhausted to update the status to "need_to_rerun".
 
-def create_tailored_resume(job_title, new_intro, skills): # Create new google doc from template and save URL
+def create_tailored_resume(record_id, company, job_title, new_intro, skills): # Create new google doc from template and save URL
     # Copy the template Doc
     template_id = config["resume_template_id"]
     response = drive_service.files().copy( # command to copy a google doc
         fileId=template_id, # selects the proper file
-        body={"name": f"{notion_record_id} - Resume - {notion_company} ({current_month} {current_year})"} # Name of the new file
+        body={"name": f"{record_id} - Resume - {company} ({current_month} {current_year})"} # Name of the new file
     ).execute()
     new_doc_id = response["id"]
 
@@ -122,7 +122,7 @@ def create_tailored_resume(job_title, new_intro, skills): # Create new google do
 
     # Return URL
     tailored_resume_url = f"https://docs.google.com/document/d/{new_doc_id}"
-    print(f"Tailored resume created: {new_doc_url}")
+    print(f"Tailored resume created: {tailored_resume_url}")
     return tailored_resume_url
     pass
 
@@ -147,14 +147,14 @@ def handle_webhook():
     result = extract_json_data(incoming_data)
     if result is None:
         return jsonify({"status": "error", "message": "Failed to parse data"}), 400
-    notion_record_id, notion_job_title, notion_company, notion_job_url, notion_job_description = result
+    record_id, job_title, company, job_url, job_description = result
 
     result = scrape_resume()
     if result is None:
         return jsonify({"status": "error", "message": "Failed to pull resume"}), 400
     resume_text = result
 
-    result = create_prompt(notion_job_description, resume_text, prompt_file="prompt.txt")
+    result = create_prompt(job_description, resume_text, prompt_file="prompt.txt")
     if result is None:
         return jsonify({"status": "error", "message": "Failed to create prompt"}), 400
     prompt = result
