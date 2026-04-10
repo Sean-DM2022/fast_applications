@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from main_script import extract_json_data
 from main_script import create_prompt
 from main_script import send_prompt
+from main_script import create_tailored_resume
 
 # --- extract_json_data ---
 def test_extract_json_data_full():
@@ -88,3 +89,10 @@ def test_send_prompt_real_api():
     assert isinstance(new_intro, str)
     assert isinstance(keywords_list, list)
     assert isinstance(skills, str)
+
+
+# --- create_tailored_resume ---
+def test_create_tailored_resume():
+    test_job_title = "Software Engineer"
+    test_new_intro = "I am a Software Engineer"
+    test_skills = "Python | Automation"

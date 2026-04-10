@@ -101,21 +101,29 @@ def send_prompt(prompt): # Send & Receive
 # Add to the send_prompt function a retry loop in case of receiving a 503 error from Gemini
 # Add an API call if retries are exhausted to update the status to "need_to_rerun".
 
-def create_tailored_resume(): # Create new google doc from template and save URL
+def create_tailored_resume(job_title, new_intro, skills): # Create new google doc from template and save URL
     # Copy the template Doc
-    template_id = config
-    copy_response = drive_service.files().copy(
-        fileId=template_id,
-        body=
+    template_id = config["resume_template_id"]
+    response = drive_service.files().copy( # command to copy a google doc
+        fileId=template_id, # selects the proper file
+        body={"name": f"{notion_record_id} - Resume - {notion_company} ({current_month} {current_year})"} # Name of the new file
     ).execute()
-    new_doc_id = copy_response["id"]
+    new_doc_id = response["id"]
 
     # Replace {{tags}}
+    docs_service.documents().batchUpdate(
+        documentId=new_doc_id,
+        body={"requests": [
+            {"replaceAllText": {"containsText": {"text": "{{job_title}}"}, "replaceText": job_title}},
+            {"replaceAllText": {"containsText": {"text": "{{introduction_paragraph}}"}, "replaceText": new_intro}},
+            {"replaceAllText": {"containsText": {"text": "{{skills}}"}, "replaceText": skills}},
+        ]}
+    ).execute()
 
     # Return URL
-    new_doc_url = f"https://docs.google.com/document/d/{new_doc_id}"
+    tailored_resume_url = f"https://docs.google.com/document/d/{new_doc_id}"
     print(f"Tailored resume created: {new_doc_url}")
-    return new_doc_url
+    return tailored_resume_url
     pass
 
 def create_payload(): # Prepare JSON payload for Notion

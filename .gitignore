@@ -3,5 +3,6 @@
 .venv
 config.json
 credentials.json
+scratch.py
 
 __pycache__/
