@@ -75,7 +75,7 @@ def test_send_prompt_mock_api():
     assert "GitHub" in missing_keywords
     assert skills == "Python | Flask | REST APIs"
 
-@pytest.mark.skip(reason="Real API call - run manually only")
+@pytest.mark.skip(reason="Real API call - run manually only") # Has passed
 def test_send_prompt_real_api():
     test_prompt = (
         "Respond ONLY with a valid JSON object containing exactly these keys: "
@@ -107,7 +107,7 @@ def test_create_tailored_resume_mock():
         assert mock_drive.files().copy().execute.called
         assert mock_docs.documents().batchUpdate().execute.called
 
-@pytest.mark.skip(reason="Real API call - run manually only")
+@pytest.mark.skip(reason="Real API call - run manually only") # Has passed
 def test_create_tailored_resume_real():
     result = create_tailored_resume(
         record_id="R2D2",

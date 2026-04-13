@@ -10,7 +10,8 @@ import json
 from google import genai
 from google.genai import types
 from googleapiclient.discovery import build
-from google.oauth2 import service_account
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
 
 # --- Keys ---
 load_dotenv()
@@ -24,12 +25,20 @@ with open("config.json", "r") as f:
 
 my_name = config["my_name"]
 
-# --- Google Service Account ---
+# --- Google OAuth 2.0 ---
 SCOPES = ["https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/documents"]
-creds = service_account.Credentials.from_service_account_file("credentials.json", scopes=SCOPES)
+
+creds = None
+if os.path.exists("token.json"):
+    creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+if not creds or not creds.valid:
+    flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
+    creds = flow.run_local_server(port=0)
+    with open("token.json", "w") as f:
+        f.write(creds.to_json())
+
 drive_service = build("drive", "v3", credentials=creds)
 docs_service = build("docs", "v1", credentials=creds)
-
 
 # --- Initial Setup ---
 app = Flask(__name__)
@@ -56,7 +65,7 @@ def extract_json_data(incoming_data): # Process the API call from Notion
         return None
 
 def scrape_resume(google_doc_url): # Pull Resume TEXT from Google Drive
-    return resume_text
+    return base_resume_text
     pass
 
 def create_prompt(job_description, resume_text, prompt_file="prompt.txt"): # Call prompt.txt, insert current resume TEXT and job description TEXT
@@ -106,7 +115,11 @@ def create_tailored_resume(record_id, company, job_title, new_intro, skills): # 
     template_id = config["resume_template_id"]
     response = drive_service.files().copy( # command to copy a google doc
         fileId=template_id, # selects the proper file
-        body={"name": f"{record_id} - Resume - {company} ({current_month} {current_year})"} # Name of the new file
+        body={
+            "name": f"{record_id} - Resume - {company} ({current_month}/{current_year})",
+            "parents": [config["output_folder"]]
+        },
+        supportsAllDrives=True
     ).execute()
     new_doc_id = response["id"]
 

@@ -4,5 +4,7 @@
 config.json
 credentials.json
 scratch.py
+prompt.txt
+token.json
 
 __pycache__/
