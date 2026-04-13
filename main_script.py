@@ -65,7 +65,7 @@ def extract_json_data(incoming_data): # Process the API call from Notion
         return None
 
 def scrape_resume(google_doc_url): # Pull Resume TEXT from Google Drive
-    return base_resume_text
+    # return base_resume_text
     pass
 
 def create_prompt(job_description, resume_text, prompt_file="prompt.txt"): # Call prompt.txt, insert current resume TEXT and job description TEXT
