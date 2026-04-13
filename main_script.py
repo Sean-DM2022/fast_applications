@@ -137,7 +137,6 @@ def create_tailored_resume(record_id, company, job_title, new_intro, skills): # 
     tailored_resume_url = f"https://docs.google.com/document/d/{new_doc_id}"
     print(f"Tailored resume created: {tailored_resume_url}")
     return tailored_resume_url
-    pass
 
 def create_payload(): # Prepare JSON payload for Notion
     pass
