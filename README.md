@@ -6,9 +6,9 @@ An automation pipeline for tailoring resumes to job postings using Notion, Googl
 
 ## WORK IN PROGRESS
 
-This project is still in development. There are 7 helper functions to the main webhook.
+This project is still in development. I work on it in my freetime. There are 7 helper functions to the main webhook.
 
-Current Status: 3 of 7 helper functions are fully written and tested.
+Current Status: 4 of 7 helper functions are fully written and tested.
 
 > **Note:** I remove `pass` from a function once it is complete and has passed pytest.
 
@@ -94,8 +94,10 @@ Then continue with the setup steps below.
 
 - **Notion**: Go to [notion.so/my-integrations](https://www.notion.so/my-integrations), create a new integration, and copy the secret key. Make sure your integration has access to the database you’re using.
 - **Gemini**: Go to [aistudio.google.com](https://aistudio.google.com) and generate an API key.
-- **Google Drive / Docs**: Set up a service account in the [Google Cloud Console](https://console.cloud.google.com/), enable the Drive and Docs APIs, and download the credentials JSON.
+- **Google Drive / Docs**: Set up a OAuth 2.0 Client in the [Google Cloud Console](https://console.cloud.google.com/), enable the Drive and Docs APIs, and download the credentials JSON.
 - **Client password**: Choose any password. This is used to authenticate requests to your Flask server.
+
+See below for notes on OAuth vs Service_account
 
 ### 3. Configure your `.env`
 
@@ -151,6 +153,37 @@ I have worked through many iterations of my prompt to get it just right for me. 
 
 -----
 
+## Google Services: OAuth vs service_account
+
+I started off attempting to use a service_account for my workflow. I ran into the issue that, on a free tier, the service_account is unable to create new google docs and files. Simply put, your service_account cannot be the 'owner' of the file. If you are running this within a business account, you can make adjustments to give the service_account permissions to create files.
+
+If you do not have a business account or paid account, have no fear. This can be completed by using an OAuth Client ID. I will walk you through the steps for this, as there is a lot.
+1. Open the [Google Cloud Console](https://console.cloud.google.com/).
+2. Create a new project
+3. With the project selected, open the left navigation menu
+4. Select APIs & Services > Credentials
+5. Select Create credentials > OAuth client ID
+6. Two Options
+    A. For Application type:
+        1. Web application
+            a. Give it a name
+            b. Add URIs
+            c. Click Create
+        2. Desktop App
+            a. Give it a name
+            b. Click Create
+    ** I suggest starting with a Desktop App while testing, then switching to the Web Application when you are ready for deployment.
+7. Save json for credentials
+8. Place json in root folder and save as "credentials.json"
+    ** File name is already added to .gitignore
+7. Select Audience
+8. Add Test User email and save
+9. Run pytest and follow the pop up to sign in
+    ** If you have multiple google accounts on the same browser, it may not go through. Copy the URL into an incognito window. After signing in, it initially fails. This is okay. Select 'Try Again'.
+    ** This process generates a token to the root folder so you won't have to sign in each time. This file will be named "token.json" automatically and the filename is already added to the .gitignore
+10. All set!
+    
+-----
 ## What’s Configurable (Without Touching Code)
 
 **You can adjust:**
