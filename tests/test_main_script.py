@@ -13,6 +13,7 @@ from main_script import extract_json_data
 from main_script import create_prompt
 from main_script import send_prompt
 from main_script import create_tailored_resume
+from main_script import scrape_resume
 
 # --- extract_json_data ---
 def test_extract_json_data_full():
@@ -118,3 +119,19 @@ def test_create_tailored_resume_real():
     )
     assert result is not None
     assert result.startswith("https://docs.google.com/document/d/")
+
+# --- scrape_resume ---
+def test_scrape_resume_mock():
+    with (patch("main_script.drive_service") as mock_drive):
+        mock_byte = "testing"
+        mock_drive.files().export().execute.return_value = mock_byte
+        result = scrape_resume()
+
+        assert result == "testing"
+        assert mock_drive.files().export().execute.called
+
+@pytest.mark.skip(reason="Real API call - run manually only")
+def test_scrape_resume_real():
+    result = scrape_resume()
+
+    assert result is not None
