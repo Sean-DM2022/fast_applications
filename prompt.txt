@@ -10,7 +10,7 @@ Below is the target job description I am applying for and my resume. Please chec
 - Do NOT suggest changes that lack evidence or are unreasonable (i.e. The user has not worked in the GovTech or LegalTech industry)
 - Tools that are similar can be substituted for one another to better align with the job description (i.e. Excel or Google Sheets are both Spreadsheets. Salesforce and HubSpot are both CRMs).
 - Attempt to replace/add/delete words and phrases rather than re-writing sentences. Only re-write if necessary.
-- Keep the following as the first sentence to the intro: "Customer-centric Implementation and Onboarding professional with 7+ years of experience in B2B SaaS and [Industry]"
+- Keep the following as the first sentence to the intro: "Client-Facing Integrations Engineer with 7+ years of experience in B2B SaaS and [Industry]"
 - Industry in the introduction paragraph should default to "IT" or "FinTech"
 
 Job Description:
