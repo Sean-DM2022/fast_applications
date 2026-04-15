@@ -123,8 +123,8 @@ def test_create_tailored_resume_real():
 # --- scrape_resume ---
 def test_scrape_resume_mock():
     with (patch("main_script.drive_service") as mock_drive):
-        mock_byte = "testing"
-        mock_drive.files().export().execute.return_value = mock_byte
+        mock_bytes = "testing".encode("utf-8")
+        mock_drive.files().export().execute.return_value = mock_bytes
         result = scrape_resume()
 
         assert result == "testing"

@@ -12,6 +12,7 @@ from google.genai import types
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
 
 # --- Keys ---
 load_dotenv()
@@ -32,10 +33,16 @@ creds = None
 if os.path.exists("token.json"):
     creds = Credentials.from_authorized_user_file("token.json", SCOPES)
 if not creds or not creds.valid:
-    flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
-    creds = flow.run_local_server(port=0)
-    with open("token.json", "w") as f:
-        f.write(creds.to_json())
+    if creds and creds.expired and creds.refresh_token:
+        creds.refresh(Request())
+        with open("token.json", "w") as f:
+            f.write(creds.to_json())
+
+    else:
+        flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
+        creds = flow.run_local_server(port=0)
+        with open("token.json", "w") as f:
+            f.write(creds.to_json())
 
 drive_service = build("drive", "v3", credentials=creds)
 docs_service = build("docs", "v1", credentials=creds)
@@ -64,7 +71,7 @@ def extract_json_data(incoming_data): # Process the API call from Notion
         print("Failed to parse JSON")
         return None
 
-def scrape_resume(): # Pull Resume TEXT from Google Drive
+def scrape_resume(): # Pull Resume from Google Drive as string
     base_resume_id = config["base_resume_id"]
     base_resume_text = drive_service.files().export(
         fileID=base_resume_id,
