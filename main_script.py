@@ -74,11 +74,10 @@ def extract_json_data(incoming_data): # Process the API call from Notion
 def scrape_resume(): # Pull Resume from Google Drive as string
     base_resume_id = config["base_resume_id"]
     base_resume_text = drive_service.files().export(
-        fileID=base_resume_id,
+        fileId=base_resume_id,
         mimeType="text/plain" # returns as bytes and not a string
     ).execute().decode("utf-8") # Google export() does not auto-decode/convert "text/plain". We need to convert it to a string with .decode()
     return base_resume_text
-    pass
 
 def create_prompt(job_description, resume_text, prompt_file="prompt.txt"): # Call prompt.txt, insert current resume TEXT and job description TEXT
     with open(prompt_file, "r") as f:

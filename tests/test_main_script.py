@@ -130,7 +130,7 @@ def test_scrape_resume_mock():
         assert result == "testing"
         assert mock_drive.files().export().execute.called
 
-@pytest.mark.skip(reason="Real API call - run manually only")
+@pytest.mark.skip(reason="Real API call - run manually only") # Has passed
 def test_scrape_resume_real():
     result = scrape_resume()
 

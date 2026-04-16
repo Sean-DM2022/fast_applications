@@ -8,7 +8,7 @@ An automation pipeline for tailoring resumes to job postings using Notion, Googl
 
 This project is still in development. I work on it in my freetime. There are 7 helper functions to the main webhook.
 
-Current Status: 4 of 7 helper functions are fully written and tested.
+Current Status: 5 of 7 helper functions are fully written and tested.
 
 > **Note:** I remove `pass` from a function once it is complete and has passed pytest.
 
