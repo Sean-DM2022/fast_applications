@@ -7,6 +7,7 @@ import os
 from dotenv import load_dotenv
 from datetime import datetime
 import json
+import requests
 from google import genai
 from google.genai import types
 from googleapiclient.discovery import build
@@ -119,7 +120,6 @@ def send_prompt(prompt): # Send & Receive
         print(f"AI call failed: {err}")
         return None
 # Add to the send_prompt function a retry loop in case of receiving a 503 error from Gemini
-# Add an API call if retries are exhausted to update the status to "need_to_rerun".
 
 def create_tailored_resume(record_id, company, job_title, new_intro, skills): # Create new google doc from template and save URL
     # Copy the template Doc
@@ -149,10 +149,25 @@ def create_tailored_resume(record_id, company, job_title, new_intro, skills): # 
     print(f"Tailored resume created: {tailored_resume_url}")
     return tailored_resume_url
 
-def create_payload(): # Prepare JSON payload for Notion
+def create_payload(record_id, keyword_list, missing_keywords, intro_paragraph, skills, resume_url): # Prepare JSON payload for Notion
+    # Need the following keys:
+    # record_id, keyword_list, missing_keywords, intro_paragraph, skills, resume_url
+
     pass
 
-def send_payload(outgoing_data): # Push API call to Notion
+def send_payload(page_id: str, children: list[dict]) -> dict: # Push API call to Notion
+    url = f"https://api.notion.com/v1/blocks/{page_id}/children"
+    headers = {
+        "Authorization": f"Bearer {database_api_key}",
+        "Content-Type": "application/json",
+        "Notion-Version": "2022-06-28",
+    }
+
+    payload = {"children": children}
+    response = requests.patch(url, headers=headers, json=payload)
+    response.raise_for_status()
+
+    return response.json()
     pass
 
 
@@ -185,9 +200,9 @@ def handle_webhook():
     result = send_prompt(prompt)
     if result is None:
         return jsonify({"status": "error", "message": "AI call failed"}), 400
-    new_intro, keywords_list, missing_keywords, skills = result
+    new_intro, keywords_list, missing_keywords, skills = result # These values will be sent to Notion
     
-    create_tailored_resume()
+    create_tailored_resume() # Need the url
 
     outgoing_data = create_payload()
     send_payload(outgoing_data)
