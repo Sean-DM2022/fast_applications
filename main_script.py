@@ -7,13 +7,13 @@ import os
 from dotenv import load_dotenv
 from datetime import datetime
 import json
-import requests
 from google import genai
 from google.genai import types
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
+import requests
 
 # --- Keys ---
 load_dotenv()
@@ -152,22 +152,49 @@ def create_tailored_resume(record_id, company, job_title, new_intro, skills): # 
 def create_payload(record_id, keyword_list, missing_keywords, intro_paragraph, skills, resume_url): # Prepare JSON payload for Notion
     # Need the following keys:
     # record_id, keyword_list, missing_keywords, intro_paragraph, skills, resume_url
-
     pass
 
-def send_payload(page_id: str, children: list[dict]) -> dict: # Push API call to Notion
-    url = f"https://api.notion.com/v1/blocks/{page_id}/children"
+def send_payload(page_id, payload): # Push API call to Notion
+    url = "https://api.notion.com/v1/pages/{page_id}"
+
+    payload = {
+        "properties": {
+            "status": {
+                "status": { "id": "tbd" },
+                "type": "status-options?"
+            },
+            "intro_paragraph": { "rich_text": [{ "text": { "content": "The real content" } }] },
+            "keyword_list": { "rich_text": [{ "text": { "content": "tbd" } }] },
+            "missing_keywords": { "rich_text": [{ "text": { "content": "tbd" } }] },
+            "resume_url": { "url": "test" },
+            "skills": { "rich_text": [{ "text": { "content": "tbd" } }] },
+        },
+        "icon": {
+            "file_upload": { "id": "<string>" },
+            "type": "<string>"
+        },
+        "cover": {
+            "file_upload": { "id": "<string>" },
+            "type": "<string>"
+        },
+        "is_locked": False,
+        "template": {
+            "type": "none",
+            "timezone": "UTC"
+        },
+        "erase_content": False,
+        "in_trash": False,
+        "is_archived": False
+    }
     headers = {
+        "Notion-Version": "2026-03-11",
         "Authorization": f"Bearer {database_api_key}",
-        "Content-Type": "application/json",
-        "Notion-Version": "2022-06-28",
+        "Content-Type": "application/json"
     }
 
-    payload = {"children": children}
-    response = requests.patch(url, headers=headers, json=payload)
-    response.raise_for_status()
+    response = requests.patch(url, json=payload, headers=headers) # Does not need to return anything. The PATCH request is sent from here
 
-    return response.json()
+    print(response.text)
     pass
 
 

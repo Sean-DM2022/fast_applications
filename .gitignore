@@ -6,5 +6,6 @@ credentials.json
 scratch.py
 prompt.txt
 token.json
+api-response.json
 
 __pycache__/
