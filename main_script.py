@@ -56,7 +56,7 @@ current_year = now.year
 
 # --- Helper Functions ---
 
-def extract_json_data(incoming_data): # Process the API call from Notion
+def extract_json_data(incoming_data): # Process the API call from Notion and pull the PAGE_ID
     print("Call received! Data payload: ", incoming_data)
     print("Extracting data...")
     try:
@@ -71,6 +71,13 @@ def extract_json_data(incoming_data): # Process the API call from Notion
     except json.JSONDecodeError:
         print("Failed to parse JSON")
         return None
+
+def request_job_description(): # Request page content
+    pass
+
+def request_fields(): # Request and save fields
+    pass
+
 
 def scrape_resume(): # Pull Resume from Google Drive as string
     base_resume_id = config["base_resume_id"]
