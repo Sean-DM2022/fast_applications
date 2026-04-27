@@ -1,4 +1,4 @@
-# fast_applications
+# FastForge API
 
 An automation pipeline for tailoring resumes to job postings using Notion, Google Gemini, and Google Drive.
 
