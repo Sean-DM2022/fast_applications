@@ -65,7 +65,7 @@ def extract_json_data(incoming_data): # Process the API call from Notion and pul
         return page_id
 
     except json.JSONDecodeError:
-        print("Failed to parse JSON")
+        print("Response is not valid JSON")
         return None
 
 def request_content(page_id): # Request page content
@@ -86,7 +86,7 @@ def request_content(page_id): # Request page content
             return page_content
 
         except json.JSONDecodeError:
-            print("Failed to parse JSON")
+            print("Response is not valid JSON")
             return None
             
     except requests.exceptions.RequestException as e:
@@ -115,7 +115,7 @@ def request_fields(page_id): # Request and save additional fields
             return job_title, company, job_url
 
         except json.JSONDecodeError:
-            print("Failed to receive response")
+            print("Response is not valid JSON")
             return None
 
     except requests.exceptions.RequestException as e:
@@ -270,7 +270,7 @@ def handle_webhook():
     outgoing_data = create_payload()
     send_payload(outgoing_data)
 
-    return jsonify({"status": "success", "message": "Processing data"}), 200
+    return jsonify({"status": "success", "message": "POST request processed successfully"}), 200
 
 if __name__ == '__main__':
     print("Starting local server on port 5000...")
