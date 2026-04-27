@@ -1,6 +1,6 @@
 # FastForge API
 
-An automation pipeline for tailoring resumes to job postings using Notion, Google Gemini, and Google Drive.
+A Python-based microservice utilizing LLM, webhooks, and databases to dynamically create context-aware documents.
 
 -----
 
