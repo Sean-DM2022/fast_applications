@@ -60,22 +60,67 @@ def extract_json_data(incoming_data): # Process the API call from Notion and pul
     print("Call received! Data payload: ", incoming_data)
     print("Extracting data...")
     try:
-        record_id = incoming_data.get("record_id")
-        job_title = incoming_data.get("job_title", "Unknown Title")
-        company = incoming_data.get("company", "Unknown Company")
-        job_url = incoming_data.get("job_url", "No URL provided")
-        job_description = incoming_data.get("job_description", "No Description provided")
-        print("Successfully parsed JSON")
-        return record_id, job_title, company, job_url, job_description
+        page_id = incoming_data.get("page_id")
+        print("Successfully saved new page_id!")
+        return page_id
 
     except json.JSONDecodeError:
         print("Failed to parse JSON")
         return None
 
-def request_job_description(): # Request page content
+def request_content(page_id): # Request page content
+    url = f"https://api.notion.com/v1/pages/{page_id}/markdown"
+    headers = {
+        "Notion-Version": "2026-03-11",
+        "Authorization": f"Bearer {database_api_key}"
+    }
+    print("Requesting page contents...")
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        print("Response received! Parsing for page contents...")
+        try:
+            data = response.json()
+            page_content = data.get("tbd")
+            print("Successfully saved page contents!")
+            return page_content
+
+        except json.JSONDecodeError:
+            print("Failed to parse JSON")
+            return None
+            
+    except requests.exceptions.RequestException as e:
+        print(f"Request failed: {e}")
+        return None
+
     pass
 
-def request_fields(): # Request and save fields
+def request_fields(page_id): # Request and save additional fields
+    url = f"https://api.notion.com/v1/pages/{page_id}"
+    headers = {
+        "Notion-Version": "2026-03-11",
+        "Authorization": f"Bearer {database_api_key}"
+    }
+    print("Sending GET request for additional fiels...")
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        print("Response received! Parsing...")
+        try:
+            data = response.json()
+            job_title = data.get("job_title", "Unknown Title")
+            company = data.get("company", "Unknown Company")
+            job_url = data.get("job_url", "No URL provided")
+            print("Successfully saved page properties!")
+            return job_title, company, job_url
+
+        except json.JSONDecodeError:
+            print("Failed to receive response")
+            return None
+
+    except requests.exceptions.RequestException as e:
+        print(f"Request failed: {e}")
+        return None
     pass
 
 
@@ -174,7 +219,7 @@ def create_payload(record_id, keyword_list, missing_keywords, intro_paragraph, s
     pass
 
 def send_payload(page_id, payload): # Push API call to Notion
-    url = "https://api.notion.com/v1/pages/{page_id}"
+    url = f"https://api.notion.com/v1/pages/{page_id}"
     headers = {
         "Notion-Version": "2026-03-11",
         "Authorization": f"Bearer {database_api_key}",
