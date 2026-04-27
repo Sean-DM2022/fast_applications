@@ -151,41 +151,23 @@ def create_tailored_resume(record_id, company, job_title, new_intro, skills): # 
 
 def create_payload(record_id, keyword_list, missing_keywords, intro_paragraph, skills, resume_url): # Prepare JSON payload for Notion
     # Need the following keys:
-    # record_id, keyword_list, missing_keywords, intro_paragraph, skills, resume_url
+    payload = {
+        "properties": {
+            "status": {
+                "status": { "name": "review_resume" },
+            },
+            "intro_paragraph": { "rich_text": [{ "text": { "content": f"{intro_paragraph}" } }] },
+            "keyword_list": { "rich_text": [{ "text": { "content": f"{keyword_list}" } }] },
+            "missing_keywords": { "rich_text": [{ "text": { "content": f"{missing_keywords}" } }] },
+            "resume_url": { "url": f"{resume_url}" },
+            "skills": { "rich_text": [{ "text": { "content": f"{skills}" } }] },
+        },
+    }
+    return payload
     pass
 
 def send_payload(page_id, payload): # Push API call to Notion
     url = "https://api.notion.com/v1/pages/{page_id}"
-
-    payload = {
-        "properties": {
-            "status": {
-                "status": { "id": "tbd" },
-                "type": "status-options?"
-            },
-            "intro_paragraph": { "rich_text": [{ "text": { "content": "The real content" } }] },
-            "keyword_list": { "rich_text": [{ "text": { "content": "tbd" } }] },
-            "missing_keywords": { "rich_text": [{ "text": { "content": "tbd" } }] },
-            "resume_url": { "url": "test" },
-            "skills": { "rich_text": [{ "text": { "content": "tbd" } }] },
-        },
-        "icon": {
-            "file_upload": { "id": "<string>" },
-            "type": "<string>"
-        },
-        "cover": {
-            "file_upload": { "id": "<string>" },
-            "type": "<string>"
-        },
-        "is_locked": False,
-        "template": {
-            "type": "none",
-            "timezone": "UTC"
-        },
-        "erase_content": False,
-        "in_trash": False,
-        "is_archived": False
-    }
     headers = {
         "Notion-Version": "2026-03-11",
         "Authorization": f"Bearer {database_api_key}",
@@ -193,6 +175,8 @@ def send_payload(page_id, payload): # Push API call to Notion
     }
 
     response = requests.patch(url, json=payload, headers=headers) # Does not need to return anything. The PATCH request is sent from here
+
+    # Notion has an avg rate limit of 3 incoming requests per second 
 
     print(response.text)
     pass
