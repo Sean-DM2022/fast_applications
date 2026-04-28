@@ -16,18 +16,37 @@ from main_script import create_tailored_resume
 from main_script import scrape_resume
 
 # --- extract_json_data ---
-def test_extract_json_data_full():
-    fake_payload = {
-        "record_id": "abc123",
-        "job_title": "Backend Developer",
-        "company": "Acme Corp",
-        "job_url": "https://acme.com/jobs/1",
-        "job_description": "We need a Python dev"
+def test_extract_json_data_full(): # The id we want is entity-id. It is NOT data-parent-id. Below is the actual schema from my notion.
+    test_payload = {
+        "id": "88888c",
+        "timestamp": "2026-04-27T23:27:54.876Z",
+        "workspace_id": "adf3e484",
+        "workspace_name": "Notion Workspace",
+        "subscription_id": "34fd872b",
+        "integration_id": "312d872b",
+        "authors": [
+            {
+            "id": "1f9d872b",
+            "type": "person"
+            }
+        ],
+        "attempt_number": 1,
+        "api_version": "2026-03-11",
+        "entity": {
+            "id": "abc123",
+            "type": "page"
+        },
+        "type": "page.created",
+        "data": {
+            "parent": {
+                "id": "3123e484668",
+                "type": "database",
+                "data_source_id": "3123e484dci"
+            }
+        }
     }
-    record_id, job_title, company, job_url, job_description = extract_json_data(fake_payload)
-    assert record_id == "abc123"
-    assert job_title == "Backend Developer"
-    assert company == "Acme Corp"
+    page_id = extract_json_data(test_payload)
+    assert page_id == "abc123"
 
 def test_extract_json_data_missing_fields():
     fake_payload = {

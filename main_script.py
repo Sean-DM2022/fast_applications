@@ -60,7 +60,7 @@ def extract_json_data(incoming_data): # Process the API call from Notion and pul
     print("Call received! Data payload: ", incoming_data)
     print("Extracting data...")
     try:
-        page_id = incoming_data.get("page_id")
+        page_id = incoming_data.get("entity").get("id")
         print("Successfully saved new page_id!")
         return page_id
 
@@ -101,18 +101,18 @@ def request_fields(page_id): # Request and save additional fields
         "Notion-Version": "2026-03-11",
         "Authorization": f"Bearer {database_api_key}"
     }
-    print("Sending GET request for additional fiels...")
+    print("Sending GET request for additional fields...")
     try:
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
         print("Response received! Parsing...")
         try:
             data = response.json()
-            job_title = data.get("job_title", "Unknown Title")
+            doc_heading = data.get("doc_heading", "Unknown Title")
             company = data.get("company", "Unknown Company")
-            job_url = data.get("job_url", "No URL provided")
+            doc_url = data.get("doc_url", "No URL provided")
             print("Successfully saved page properties!")
-            return job_title, company, job_url
+            return doc_heading, company, doc_url
 
         except json.JSONDecodeError:
             print("Response is not valid JSON")
@@ -124,21 +124,21 @@ def request_fields(page_id): # Request and save additional fields
     pass
 
 
-def scrape_resume(): # Pull Resume from Google Drive as string
-    base_resume_id = config["base_resume_id"]
-    base_resume_text = drive_service.files().export(
-        fileId=base_resume_id,
+def scrape_template(): # Pull Resume from Google Drive as string
+    base_template_id = config["base_template_id"]
+    base_template_text = drive_service.files().export(
+        fileId=base_template_id,
         mimeType="text/plain" # returns as bytes and not a string
     ).execute().decode("utf-8") # Google export() does not auto-decode/convert "text/plain". We need to convert it to a string with .decode()
-    return base_resume_text
+    return base_template_text
 
-def create_prompt(job_description, resume_text, prompt_file="prompt.txt"): # Call prompt.txt, insert current resume TEXT and job description TEXT
+def create_prompt(page_content, template_text, prompt_file="prompt.txt"): # Call prompt.txt, insert current template TEXT and doc_content TEXT
     with open(prompt_file, "r") as f:
         prompt = f.read()
-    prompt = prompt.replace("{{notion_job_description}}", job_description)
-    prompt = prompt.replace("{{base_resume_text}}", resume_text)
+    prompt = prompt.replace("{{notion_page_content}}", page_content)
+    prompt = prompt.replace("{{base_template_text}}", template_text)
     return prompt
-# Add a try/exception to make sure the job_description and resume_text are not blank.
+# Add a try/exception to make sure the page_content and template_text are not blank.
 
 def send_prompt(prompt): # Send & Receive
     client = genai.Client(api_key=gemini_api_key)
@@ -173,9 +173,9 @@ def send_prompt(prompt): # Send & Receive
         return None
 # Add to the send_prompt function a retry loop in case of receiving a 503 error from Gemini
 
-def create_tailored_resume(record_id, company, job_title, new_intro, skills): # Create new google doc from template and save URL
+def create_tailored_template(record_id, company, doc_heading, new_intro, skills): # Create new google doc from template and save URL
     # Copy the template Doc
-    template_id = config["resume_template_id"]
+    template_id = config["template_template_id"]
     response = drive_service.files().copy( # command to copy a google doc
         fileId=template_id, # selects the proper file
         body={
@@ -190,28 +190,28 @@ def create_tailored_resume(record_id, company, job_title, new_intro, skills): # 
     docs_service.documents().batchUpdate(
         documentId=new_doc_id,
         body={"requests": [
-            {"replaceAllText": {"containsText": {"text": "{{job_title}}"}, "replaceText": job_title}},
+            {"replaceAllText": {"containsText": {"text": "{{doc_heading}}"}, "replaceText": doc_heading}},
             {"replaceAllText": {"containsText": {"text": "{{introduction_paragraph}}"}, "replaceText": new_intro}},
             {"replaceAllText": {"containsText": {"text": "{{skills}}"}, "replaceText": skills}},
         ]}
     ).execute()
 
     # Return URL
-    tailored_resume_url = f"https://docs.google.com/document/d/{new_doc_id}"
-    print(f"Tailored resume created: {tailored_resume_url}")
-    return tailored_resume_url
+    tailored_template_url = f"https://docs.google.com/document/d/{new_doc_id}"
+    print(f"Tailored template created: {tailored_template_url}")
+    return tailored_template_url
 
-def create_payload(record_id, keyword_list, missing_keywords, intro_paragraph, skills, resume_url): # Prepare JSON payload for Notion
+def create_payload(record_id, keyword_list, missing_keywords, intro_paragraph, skills, template_url): # Prepare JSON payload for Notion
     # Need the following keys:
     payload = {
         "properties": {
             "status": {
-                "status": { "name": "review_resume" },
+                "status": { "name": "review_doc" },
             },
             "intro_paragraph": { "rich_text": [{ "text": { "content": f"{intro_paragraph}" } }] },
             "keyword_list": { "rich_text": [{ "text": { "content": f"{keyword_list}" } }] },
             "missing_keywords": { "rich_text": [{ "text": { "content": f"{missing_keywords}" } }] },
-            "resume_url": { "url": f"{resume_url}" },
+            "template_url": { "url": f"{template_url}" },
             "skills": { "rich_text": [{ "text": { "content": f"{skills}" } }] },
         },
     }
@@ -235,7 +235,7 @@ def send_payload(page_id, payload): # Push API call to Notion
 
 
 # --- Main Webhook ---
-@app.route('/api/v1/resume-build', methods=['POST'])
+@app.route('/api/v1/doc-build', methods=['POST'])
 def handle_webhook():
     provided_key = request.headers.get('Authorization')
     if provided_key != f"Bearer {my_client_password}":
@@ -248,14 +248,14 @@ def handle_webhook():
     result = extract_json_data(incoming_data)
     if result is None:
         return jsonify({"status": "error", "message": "Failed to parse data"}), 400
-    record_id, job_title, company, job_url, job_description = result
+    record_id, doc_heading, company, doc_url, page_content = result
 
-    result = scrape_resume()
+    result = scrape_template()
     if result is None:
-        return jsonify({"status": "error", "message": "Failed to pull resume"}), 400
-    resume_text = result
+        return jsonify({"status": "error", "message": "Failed to pull template"}), 400
+    template_text = result
 
-    result = create_prompt(job_description, resume_text, prompt_file="prompt.txt")
+    result = create_prompt(page_content, template_text, prompt_file="prompt.txt")
     if result is None:
         return jsonify({"status": "error", "message": "Failed to create prompt"}), 400
     prompt = result
@@ -265,7 +265,7 @@ def handle_webhook():
         return jsonify({"status": "error", "message": "AI call failed"}), 400
     new_intro, keywords_list, missing_keywords, skills = result # These values will be sent to Notion
     
-    create_tailored_resume() # Need the url
+    create_tailored_template() # Need the url
 
     outgoing_data = create_payload()
     send_payload(outgoing_data)
