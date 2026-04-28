@@ -12,8 +12,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from main_script import extract_json_data
 from main_script import create_prompt
 from main_script import send_prompt
-from main_script import create_tailored_resume
-from main_script import scrape_resume
+from main_script import create_tailored_doc
+from main_script import scrape_template
 
 # --- extract_json_data ---
 def test_extract_json_data_full(): # The id we want is entity-id. It is NOT data-parent-id. Below is the actual schema from my notion.
@@ -49,10 +49,10 @@ def test_extract_json_data_full(): # The id we want is entity-id. It is NOT data
     assert page_id == "abc123"
 
 def test_extract_json_data_missing_fields():
-    fake_payload = {
+    test_payload = {
         "record_id": "xyz789"
         }
-    record_id, job_title, company, job_url, job_description = extract_json_data(fake_payload)
+    record_id, job_title, company, job_url, job_description = extract_json_data(test_payload)
     assert record_id == "xyz789"
     assert job_title == "Unknown Title"
     assert company == "Unknown Company"
@@ -112,10 +112,10 @@ def test_send_prompt_real_api():
 
 
 # --- create_tailored_resume ---
-def test_create_tailored_resume_mock():
+def test_create_tailored_doc_mock():
     with (patch("main_script.drive_service") as mock_drive, patch("main_script.docs_service") as mock_docs):
         mock_drive.files().copy().execute.return_value = {"id": "fake_doc_id_123"}
-        result = create_tailored_resume(
+        result = create_tailored_doc(
             record_id="R2D2",
             company="NOMA",
             job_title="Software Engineer",
@@ -128,8 +128,8 @@ def test_create_tailored_resume_mock():
         assert mock_docs.documents().batchUpdate().execute.called
 
 @pytest.mark.skip(reason="Real API call - run manually only") # Has passed
-def test_create_tailored_resume_real():
-    result = create_tailored_resume(
+def test_create_tailored_doc_real():
+    result = create_tailored_doc(
         record_id="R2D2",
         company="NOMA",
         job_title="Software Engineer",
@@ -139,18 +139,18 @@ def test_create_tailored_resume_real():
     assert result is not None
     assert result.startswith("https://docs.google.com/document/d/")
 
-# --- scrape_resume ---
-def test_scrape_resume_mock():
+# --- scrape_template ---
+def test_scrape_template_mock():
     with (patch("main_script.drive_service") as mock_drive):
         mock_bytes = "testing".encode("utf-8")
         mock_drive.files().export().execute.return_value = mock_bytes
-        result = scrape_resume()
+        result = scrape_template()
 
         assert result == "testing"
         assert mock_drive.files().export().execute.called
 
 @pytest.mark.skip(reason="Real API call - run manually only") # Has passed
-def test_scrape_resume_real():
-    result = scrape_resume()
+def test_scrape_template_real():
+    result = scrape_template()
 
     assert result is not None

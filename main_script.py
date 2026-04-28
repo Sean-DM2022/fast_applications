@@ -41,7 +41,7 @@ if not creds or not creds.valid:
 
     else:
         flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
-        creds = flow.run_local_server(port=0)
+        creds = flow.run_local_server(port=0, access_type="offline", prompt="consent")
         with open("token.json", "w") as f:
             f.write(creds.to_json())
 
@@ -108,7 +108,7 @@ def request_fields(page_id): # Request and save additional fields
         print("Response received! Parsing...")
         try:
             data = response.json()
-            doc_heading = data.get("doc_heading", "Unknown Title")
+            doc_heading = data.get("doc_heading", "Unknown Heading")
             company = data.get("company", "Unknown Company")
             doc_url = data.get("doc_url", "No URL provided")
             print("Successfully saved page properties!")
@@ -125,18 +125,18 @@ def request_fields(page_id): # Request and save additional fields
 
 
 def scrape_template(): # Pull Resume from Google Drive as string
-    base_template_id = config["base_template_id"]
-    base_template_text = drive_service.files().export(
-        fileId=base_template_id,
+    template_id = config["base_template_id"]
+    template_text = drive_service.files().export(
+        fileId=template_id,
         mimeType="text/plain" # returns as bytes and not a string
     ).execute().decode("utf-8") # Google export() does not auto-decode/convert "text/plain". We need to convert it to a string with .decode()
-    return base_template_text
+    return template_text
 
 def create_prompt(page_content, template_text, prompt_file="prompt.txt"): # Call prompt.txt, insert current template TEXT and doc_content TEXT
     with open(prompt_file, "r") as f:
         prompt = f.read()
-    prompt = prompt.replace("{{notion_page_content}}", page_content)
-    prompt = prompt.replace("{{base_template_text}}", template_text)
+    prompt = prompt.replace("{{page_content}}", page_content)
+    prompt = prompt.replace("{{template_text}}", template_text)
     return prompt
 # Add a try/exception to make sure the page_content and template_text are not blank.
 
@@ -173,13 +173,13 @@ def send_prompt(prompt): # Send & Receive
         return None
 # Add to the send_prompt function a retry loop in case of receiving a 503 error from Gemini
 
-def create_tailored_template(record_id, company, doc_heading, new_intro, skills): # Create new google doc from template and save URL
+def create_tailored_doc(record_id, company, doc_heading, new_intro, skills): # Create new google doc from template and save URL
     # Copy the template Doc
-    template_id = config["template_template_id"]
+    template_id = config["template_id"]
     response = drive_service.files().copy( # command to copy a google doc
         fileId=template_id, # selects the proper file
         body={
-            "name": f"{record_id} - Resume - {company} ({current_month}/{current_year})",
+            "name": f"{record_id} - {company} ({current_month}/{current_year})",
             "parents": [config["output_folder"]]
         },
         supportsAllDrives=True
@@ -197,11 +197,11 @@ def create_tailored_template(record_id, company, doc_heading, new_intro, skills)
     ).execute()
 
     # Return URL
-    tailored_template_url = f"https://docs.google.com/document/d/{new_doc_id}"
-    print(f"Tailored template created: {tailored_template_url}")
-    return tailored_template_url
+    tailored_doc_url = f"https://docs.google.com/document/d/{new_doc_id}"
+    print(f"Tailored document created: {tailored_doc_url}")
+    return tailored_doc_url
 
-def create_payload(record_id, keyword_list, missing_keywords, intro_paragraph, skills, template_url): # Prepare JSON payload for Notion
+def create_payload(record_id, keyword_list, missing_keywords, intro_paragraph, skills, tailored_doc_url): # Prepare JSON payload for Notion
     # Need the following keys:
     payload = {
         "properties": {
@@ -211,7 +211,7 @@ def create_payload(record_id, keyword_list, missing_keywords, intro_paragraph, s
             "intro_paragraph": { "rich_text": [{ "text": { "content": f"{intro_paragraph}" } }] },
             "keyword_list": { "rich_text": [{ "text": { "content": f"{keyword_list}" } }] },
             "missing_keywords": { "rich_text": [{ "text": { "content": f"{missing_keywords}" } }] },
-            "template_url": { "url": f"{template_url}" },
+            "tailored_doc_url": { "url": f"{tailored_doc_url}" },
             "skills": { "rich_text": [{ "text": { "content": f"{skills}" } }] },
         },
     }
@@ -265,7 +265,7 @@ def handle_webhook():
         return jsonify({"status": "error", "message": "AI call failed"}), 400
     new_intro, keywords_list, missing_keywords, skills = result # These values will be sent to Notion
     
-    create_tailored_template() # Need the url
+    create_tailored_doc() # Need the url
 
     outgoing_data = create_payload()
     send_payload(outgoing_data)
