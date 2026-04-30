@@ -81,7 +81,7 @@ def request_content(page_id): # Request page content
         print("Response received! Parsing for page contents...")
         try:
             data = response.json()
-            page_content = data.get("tbd")
+            page_content = data.get("markdown")
             print("Successfully saved page contents!")
             return page_content
 
@@ -92,9 +92,9 @@ def request_content(page_id): # Request page content
     except requests.exceptions.RequestException as e:
         print(f"Request failed: {e}")
         return None
-
     pass
 
+# I am using notion as my database. The fields are deeply embedded in the json files.
 def request_fields(page_id): # Request and save additional fields
     url = f"https://api.notion.com/v1/pages/{page_id}"
     headers = {
@@ -108,11 +108,11 @@ def request_fields(page_id): # Request and save additional fields
         print("Response received! Parsing...")
         try:
             data = response.json()
-            doc_heading = data.get("doc_heading", "Unknown Heading")
-            company = data.get("company", "Unknown Company")
-            doc_url = data.get("doc_url", "No URL provided")
+            record_id = data.get("properties").get("ID").get("unique_id").get("number")
+            doc_heading = data.get("properties").get("title").get("rich_text").get("plain_text")
+            company = data.get("properties").get("company").get("rich_text").get("plain_text")
             print("Successfully saved page properties!")
-            return doc_heading, company, doc_url
+            return record_id, doc_heading, company
 
         except json.JSONDecodeError:
             print("Response is not valid JSON")
@@ -154,14 +154,14 @@ def send_prompt(prompt): # Send & Receive
         print("Response from AI received!")
         print("Parsing response...")
         try:
-            ai_data = json.loads(response.text)
+            ai_data = json.loads(json.dumps(response.text))
 
-            new_intro = ai_data.get("intro_paragraph", "")
-            keywords_list = ai_data.get("keywords_list", [])
+            new_intro = ai_data.get("new_intro", "")
+            keyword_list = ai_data.get("keywords_list", [])
             missing_keywords = ai_data.get("missing_keywords", [])
             skills = ai_data.get("skills", "")
             print("Successfully parsed AI response!")
-            return new_intro, keywords_list, missing_keywords, skills
+            return new_intro, keyword_list, missing_keywords, skills
 
         except json.JSONDecodeError as json_err:
             print(f"Failed to parse AI response: {json_err}")
@@ -179,7 +179,7 @@ def create_tailored_doc(record_id, company, doc_heading, new_intro, skills): # C
     response = drive_service.files().copy( # command to copy a google doc
         fileId=template_id, # selects the proper file
         body={
-            "name": f"{record_id} - {company} ({current_month}/{current_year})",
+            "name": f"ID-{record_id} - {company} ({current_month}/{current_year})",
             "parents": [config["output_folder"]]
         },
         supportsAllDrives=True
@@ -201,14 +201,13 @@ def create_tailored_doc(record_id, company, doc_heading, new_intro, skills): # C
     print(f"Tailored document created: {tailored_doc_url}")
     return tailored_doc_url
 
-def create_payload(record_id, keyword_list, missing_keywords, intro_paragraph, skills, tailored_doc_url): # Prepare JSON payload for Notion
-    # Need the following keys:
+def create_payload(new_intro, keyword_list, missing_keywords, tailored_doc_url, skills): # Prepare JSON payload for Notion
     payload = {
         "properties": {
             "status": {
                 "status": { "name": "review_doc" },
             },
-            "intro_paragraph": { "rich_text": [{ "text": { "content": f"{intro_paragraph}" } }] },
+            "intro_paragraph": { "rich_text": [{ "text": { "content": f"{new_intro}" } }] },
             "keyword_list": { "rich_text": [{ "text": { "content": f"{keyword_list}" } }] },
             "missing_keywords": { "rich_text": [{ "text": { "content": f"{missing_keywords}" } }] },
             "tailored_doc_url": { "url": f"{tailored_doc_url}" },
@@ -248,7 +247,17 @@ def handle_webhook():
     result = extract_json_data(incoming_data)
     if result is None:
         return jsonify({"status": "error", "message": "Failed to parse data"}), 400
-    record_id, doc_heading, company, doc_url, page_content = result
+    page_id = result
+
+    result = request_content(page_id)
+    if result is None:
+        return jsonify({"status": "error", "message": "Could not locate page_id"}), 400
+    page_content = result
+
+    result = request_fields(page_id)
+    if result is None:
+        return jsonify({"status": "error", "message": "Could not pull additional fields"}), 400
+    record_id, doc_heading, company = result
 
     result = scrape_template()
     if result is None:
@@ -263,12 +272,15 @@ def handle_webhook():
     result = send_prompt(prompt)
     if result is None:
         return jsonify({"status": "error", "message": "AI call failed"}), 400
-    new_intro, keywords_list, missing_keywords, skills = result # These values will be sent to Notion
+    new_intro, keyword_list, missing_keywords, skills = result # These values will be sent to Notion
     
-    create_tailored_doc() # Need the url
+    result = create_tailored_doc(record_id, company, doc_heading, new_intro, skills)
+    if result is None:
+        return jsonify({"status": "error", "message": "Failed to create tailored document"}), 400
+    tailored_doc_url = result
 
-    outgoing_data = create_payload()
-    send_payload(outgoing_data)
+    payload = create_payload(new_intro, keyword_list, missing_keywords, tailored_doc_url, skills)
+    send_payload(page_id, payload)
 
     return jsonify({"status": "success", "message": "POST request processed successfully"}), 200
 
