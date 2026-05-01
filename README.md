@@ -6,9 +6,9 @@ A Python-based microservice utilizing LLM, webhooks, and databases to dynamicall
 
 ## WORK IN PROGRESS
 
-This project is still in development. I work on it in my freetime. There are 7 helper functions to the main webhook.
+This project is still in development. I work on it in my freetime. There are 9 helper functions to the main webhook.
 
-Current Status: 5 of 7 helper functions are fully written and tested.
+Current Status: 7 of 9 helper functions are fully functional and tested.
 
 > **Note:** I remove `pass` from a function once it is complete and has passed pytest.
 
@@ -16,15 +16,20 @@ Current Status: 5 of 7 helper functions are fully written and tested.
 
 ## Overview
 
-Job applications are time-consuming. This script automates the most tedious part: reading a job posting and getting AI-powered suggestions for how to tailor your resume to it.
+Use Cases
+1. Custom Onboarding Guides/Runbooks
+2. Financial Audit Briefs
+3. Incident Post-Mortems
+4. Dynamic SLA's
+
 
 The workflow:
 
-1. Save a job posting to Notion using the **Save to Notion** browser extension
+1. Create a new page in Notion. Using the **Save to Notion** browser extension
 2. Notion sends a webhook to this app
-3. The app pulls the job data, fetches your base resume from Google Drive, and sends everything to **Google Gemini**
-4. Gemini returns structured suggestions for tailoring your resume
-5. The results are saved to a new **Google Doc** for your review before applying
+3. The app pulls the context data, fetches your base template from Google Drive, and sends everything to **Google Gemini**
+4. Gemini returns structured suggestions for tailoring your template document
+5. The results are saved to a new **Google Doc** for your review before proceeding
 
 The app is built with **Flask** and can be hosted locally or on a free [Render](https://render.com/) instance.
 
@@ -34,9 +39,9 @@ The app is built with **Flask** and can be hosted locally or on a free [Render](
 
 |Purpose             |Tool                      |Why                                     |
 |--------------------|--------------------------|----------------------------------------|
-|Task/job database   |Notion                    |Free API, great for project management  |
+|Database            |Notion                    |Free API, great for project management  |
 |Browser clipping    |Save to Notion (extension)|Easy way to add jobs to the workflow    |
-|Resume + doc storage|Google Drive / Google Docs|Free API, dynamic and easy to update    |
+|Doc storage         |Google Drive / Google Docs|Free API, dynamic and easy to update    |
 |AI suggestions      |Google Gemini (Flash)     |Free API tier; ChatGPT no longer has one|
 |Server hosting      |Render                    |Free tier for personal apps             |
 |Web framework       |Flask                     |Lightweight; supports local hosting too |
@@ -49,15 +54,8 @@ The app is built with **Flask** and can be hosted locally or on a free [Render](
 
 Stores your secret keys. **Never commit this file to version control.**
 
-Create a `.env` file in the root folder using this template:
+Create a `.env` file in the root folder using the `.env.example`
 
-```
-# Local storage of keys and passwords
-notion_local_api_key=
-gemini_local_api_key=
-google_drive_local_api_key=
-my_local_client_password=
-```
 
 ### `prompt.txt`
 
@@ -66,13 +64,13 @@ The prompt sent to Gemini. The entire contents of this file are read and submitt
 Use `{{double_curly_braces}}` for dynamic tags that get replaced at runtime. For example:
 
 
-Here is a job description: {{job_description}}
-Here is my resume: {{resume_text}}
+Here is my content: {{page_content}}
+Here is my template: {{template_text}}
 
 
 ### `config.json`
 
-Configuration that doesn’t belong in `.env`. This is where you adjust things like Notion database field names or the number of fields you want to process — without touching the Python code.
+Configuration that doesn’t belong in `.env`. This is where you adjust things like Notion database field names or the number of fields you want to process — without needing to touch the Python code.
 
 -----
 
@@ -82,8 +80,8 @@ Configuration that doesn’t belong in `.env`. This is where you adjust things l
 
 Clone the repo and set up a virtual environment:
 
-    git clone https://github.com/Sean-DM2022/fast_applications.git
-    cd fast_applications
+    git clone https://github.com/Sean-DM2022/fastforge-api.git
+    cd fastforge-api
     python -m venv .venv
     source .venv/bin/activate  # Windows: source .venv/Scripts/activate
     pip install -r requirements.txt
@@ -103,15 +101,15 @@ See below for notes on OAuth vs Service_account
 
 Copy the template above into a new `.env` file in the root folder and fill in your keys.
 
-### 4. Set up your resume in Google Drive (WIP)
+### 4. Set up your template in Google Drive (WIP)
 
-Store your **base resume** as a Google Doc. The script fetches it fresh on each run, so any updates you make to the doc are automatically picked up.
+Store your **base_template** as a Google Doc. The script fetches it fresh on each run, so any updates you make to the doc are automatically picked up.
 
-For applying, it’s recommended to maintain a second Google Doc as a **template**, a copy of your base resume with sections replaced by `{{TAGS}}`. Gemini’s suggestions can then be slotted directly into the template.
+For customizing, it’s recommended to maintain a second Google Doc as a **tagged_template**, a copy of your base template with sections replaced by `{{TAGS}}`. Gemini’s suggestions can then be slotted directly into the template.
 
 ### 5. Write your prompt
 
-Edit `prompt.txt` with the instructions you want to send to Gemini. Use `{{tags}}` to reference dynamic values like the job description or your resume text. The quality of AI output depends heavily on prompt quality — see the note below.
+Edit `prompt.txt` with the instructions you want to send to Gemini. Use `{{tags}}` to reference dynamic values, like the specific context or your output template. The quality of AI output depends heavily on prompt quality — see the note below.
 
 ### 6. Configure `config.json` (WIP)
 
@@ -128,7 +126,7 @@ Flask’s built-in server lets you run the app on your machine. Useful for testi
 
 ### On Render (recommended for portability)
 
-[Render](https://render.com/) offers a free tier that works well for personal automation apps. Connect your GitHub repo and it will deploy automatically on each push.
+[Render](https://render.com/) offers a free tier that works well for small-scale or personal apps. Connect your GitHub repo and it will deploy automatically on each push.
 
 > **Note:** Free Render instances go dormant after 15 minutes of inactivity. Expect a 30–60 second delay on the first webhook while the instance wakes up.
 
@@ -141,8 +139,8 @@ The quality of Gemini’s suggestions depends entirely on the quality of your pr
 A good prompt typically includes:
 
 - Clear instructions on what you want (e.g., “suggest edits to the bullet points under Experience”)
-- The full job description
-- Your base resume
+- The full context and use case
+- Your base template/output
 - The format you want the response in (the app expects structured JSON)
 
 Treat your `prompt.txt` as something worth iterating on. Small improvements to the prompt can have a big impact on the output.

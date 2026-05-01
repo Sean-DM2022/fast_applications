@@ -175,7 +175,7 @@ def send_prompt(prompt): # Send & Receive
 
 def create_tailored_doc(record_id, company, doc_heading, new_intro, skills): # Create new google doc from template and save URL
     # Copy the template Doc
-    template_id = config["template_id"]
+    template_id = config["tagged_template_id"]
     response = drive_service.files().copy( # command to copy a google doc
         fileId=template_id, # selects the proper file
         body={

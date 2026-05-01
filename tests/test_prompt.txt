@@ -1,1 +1,1 @@
-Job: {{notion_job_description}} Resume: {{base_resume_text}}
+Content: {{page_content}} Template: {{template_text}}

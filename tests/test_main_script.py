@@ -59,7 +59,7 @@ def test_extract_json_data_missing_fields():
         },
     }
     page_id = extract_json_data(test_payload)
-    assert page_id == ""
+    assert page_id is None
 
 
 
@@ -80,13 +80,13 @@ def test_create_prompt_full():
     test_content = "practice content"
     test_template_text = "practice template text"
     return_prompt = create_prompt(test_content, test_template_text, prompt_file="tests/test_prompt.txt")
-    assert return_prompt == "Job: practice content Resume: practice template text"
+    assert return_prompt == "Content: practice content Template: practice template text"
 
 def test_create_prompt_missing_fields():
     test_content = "practice content"
     test_template_text =  ""
     return_prompt = create_prompt(test_content, test_template_text, prompt_file="tests/test_prompt.txt")
-    assert return_prompt == "Job: practice content Resume: "
+    assert return_prompt == "Content: practice content Template: "
 
 
 
@@ -100,7 +100,7 @@ def test_send_prompt_mock_api():
     }
     # Utilizing MagicMock to intercept the API call for testing purposes
     mock_response = MagicMock()
-    mock_response.text = json.dumps(fake_ai_response)
+    mock_response.text = fake_ai_response
 
     # 'patch' intercepts the real Gemini call and returns our fake instead
     with patch("main_script.genai.Client") as mock_client:
