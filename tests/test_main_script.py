@@ -66,12 +66,16 @@ def test_extract_json_data_missing_fields():
 # --- request_content ---
 def test_request_content_mock():
     pass
+
+@pytest.mark.skip(reason="Real API call - run manually only")
 def test_request_content_real():
     pass
 
 # === request_fields ---
 def test_request_fields_mock():
     pass
+
+@pytest.mark.skip(reason="Real API call - run manually only")
 def test_request_fields_real():
     pass
 
