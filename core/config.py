@@ -9,7 +9,6 @@ This script handles the following:
 
 # --- Modules & Packages ---
 import os
-import json
 from dotenv import load_dotenv
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request as GoogleRequest

@@ -11,7 +11,6 @@ This script does the following:
 
 # --- Modules & Packages ---
 from flask import Flask, request, jsonify
-import os
 import json
 import requests
 import hmac

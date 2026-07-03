@@ -12,7 +12,6 @@ This script does the following:
 # --- Modules & Packages ---
 from fastapi import FastAPI, Request, HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse
-import os
 import json
 import httpx2
 import hmac

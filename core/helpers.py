@@ -16,7 +16,7 @@ This script handles several items:
 '''
 
 # --- Modules & Packages ---
-from core.config import get_credentials, get_drive_service, get_docs_service, GEMINI_API_KEY, logger
+from core.config import GEMINI_API_KEY, logger
 from datetime import datetime
 import json
 from google import genai
