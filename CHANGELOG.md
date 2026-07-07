@@ -8,7 +8,7 @@ Documented iteration changes
 
 1. Revamped repo architecture to lessen clutter
     - Files and folders renamed
-    - Helper functions 
+    - Helper functions
 2. The main script now has a **sync** and **async** version
    - Flask and Requests library replaced by FastAPI and HTTPX in the **async** version
 3. Added `INSTALL.md` for detailed instructions

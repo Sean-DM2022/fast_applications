@@ -13,6 +13,9 @@ This guide is written for developers setting up FastForge for their own workflow
   - [Project Structure (Simplified)](#project-structure-simplified)
   - [Configuration](#configuration)
     - [API Keys](#api-keys)
+      - [Notion Keys](#notion-keys)
+      - [Gemini Keys](#gemini-keys)
+      - [Google Cloud](#google-cloud)
     - [Google Cloud \& OAuth Setup](#google-cloud--oauth-setup)
     - [Environment Variables](#environment-variables)
     - [config.json](#configjson)
@@ -91,17 +94,20 @@ fastforge-api/
 
 You will need credentials from three services before running the app.
 
-**Notion**
+#### Notion Keys
+
 1. Go to [notion.so/my-integrations](https://www.notion.so/my-integrations) and create a new integration
 2. Enter a name and select an Authentication method: we will use `Access token`
 3. Copy and save the Integration access token under `NOTION_ACCESS_TOKEN` in your .env
 4. Select **Content Access** tab → **Edit Access** → Search your database name → click and **Save**
 
-**Gemini**
+#### Gemini Keys
+
 1. Go to [aistudio.google.com](https://aistudio.google.com)
 2. Generate an API key and copy it
 
-**Google Cloud**
+#### Google Cloud
+
 Follow the [Google Cloud & OAuth Setup](#google-cloud--oauth-setup) section below — there are more steps involved.
 
 ---
@@ -129,16 +135,15 @@ Follow the [Google Cloud & OAuth Setup](#google-cloud--oauth-setup) section belo
    - Navigate to **Audience**
    - **User type** should be set to **External**
    - Under **Test Users**, add the Google account you will authenticate with
-7. Generate your refresh token by running the token script locally:
-```bash
-   python setup/generate_token.py
-```
+7. Generate your refresh token
+   - Run the `generate_token.py` script locally
    - A browser window will open for OAuth sign-in
    - If the window does not open automatically, the link will appear in your terminal. Copy the URL
    - If you have multiple Google accounts logged in, copy the URL into an incognito window to avoid account confusion
    - After signing in, the redirect page may show an error — this is expected. Click **Try Again**
    - A `token.json` file will be written to `/setup`. This file is in `.gitignore`
 8. Copy the `refresh_token` value from `token.json` and save it as `GOOGLE_REFRESH_TOKEN` in your `.env`
+
 > **Token expiry:** While your OAuth app is in Testing mode, Google expires all refresh tokens after 7 days — including for test users. To remove this limit, either publish the OAuth app (goes through Google verification) or migrate to a service account under a Google Workspace account. See the [README](README.md#supported-integrations) for roadmap context.
 
 ---
@@ -166,7 +171,7 @@ Copy `setup/examples/config.json.example` to `setup/config.json`.
 
 This file holds the Google Doc IDs for your base and tagged templates. To find a document ID, open it in Google Docs — the ID is the string between `/d/` and `/edit` in the URL:
 
-```
+```bash
 https://docs.google.com/document/d/1dizHrezuyheme2ewSEGolSw5C4zKcn0Ky23KgO7u-p2M/edit
                                     └──────────────── Document ID ────────────┘
 ```
@@ -184,10 +189,12 @@ Your reference document — a completed example of what the output should look l
 A duplicate of the base template where each AI-generated section is replaced with a `{{tag}}` placeholder. At runtime, the app replaces each tag with the corresponding key from Gemini's JSON response.
 
 Steps:
+
 1. Create or identify your base template document in Google Docs
 2. Duplicate it
 3. In the duplicate, replace each AI-generated section with a `{{tag}}` — keys must match exactly what your prompt instructs Gemini to return in its JSON
 4. Add both document IDs to `setup/config.json`
+
 ---
 
 ## Prompt Engineering
@@ -195,6 +202,7 @@ Steps:
 The prompt is the highest-leverage variable in the system. A well-crafted prompt produces output that requires no edits. A vague prompt produces output that creates more work than it saves.
 
 A production-ready prompt should include:
+
 - Clear instructions on what Gemini should generate for each section
 - Full workflow context and the specific use case
 - Your base template as a formatting and tone reference
@@ -205,10 +213,12 @@ Here are two articles that discuss prompt engineering in greater detail:
 [MIT Sloan](https://mitsloanedtech.mit.edu/ai/basics/effective-prompts/)
 
 **Recommended iteration workflow:**
+
 1. Draft your prompt in `setup/prompt.txt`
 2. Test it directly on [gemini.google.com](https://gemini.google.com) — Model = 3.1 Flash-Lite — avoid burning API tokens during iteration
 3. Adjust until the output requires no (or minimal) manual edits
 4. The finalized prompt is what gets sent via the API at runtime
+
 > Prompt iteration takes time. Expect multiple rounds before it feels right. Small, targeted adjustments tend to have the greatest impact on output quality.
 
 ---
@@ -218,9 +228,11 @@ Here are two articles that discuss prompt engineering in greater detail:
 Notion requires a publicly accessible endpoint to verify ownership before it will deliver webhook events. The `initial.py` script is a minimal server designed specifically for this handshake — it does nothing else.
 
 1. Deploy a server running `initial.py` on Render or any publicly accessible host
-```bash
-gunicorn initial:app --timeout 120
-```
+
+   ```bash
+   gunicorn initial:app --timeout 120
+   ```
+
 2. In Notion, open your integration settings and create a new webhook subscription:
    - **Event type:** `page_created`
    - **Endpoint URL:** your public server URL
@@ -253,17 +265,18 @@ uvicorn main_async:app --reload
    - The app resolves credential paths using `os.path.exists()` branching to handle both Render (`/etc/secrets/`) and local paths
 4. Set the **Start Command** based on your preferred workflow:
    **Sync (Flask + Gunicorn):**
+
 ```bash
    gunicorn main_sync:app --timeout 120
 ```
 
    **Async (FastAPI + Uvicorn worker):**
+
 ```bash
    gunicorn -k uvicorn.workers.UvicornWorker main_async:app --timeout 120
 ```
 
    > The `--timeout 120` flag is important — Gunicorn's default 30-second worker timeout will kill long-running Gemini API calls before they complete. Adjust as needed based on your average generation time.
-
 > **Free tier note:** Render free instances go dormant after 15 minutes of inactivity. Expect a 30–60 second cold-start delay on the first webhook after dormancy. This does not affect paid tiers.
 
 ---

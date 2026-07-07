@@ -71,7 +71,7 @@ def test_request_fields_mock_success():
     with patch("requests.get", return_value=mock_response) as mock_get:
         result = request_fields(test_page_id)
     mock_get.assert_called_once()
-    assert result == (1, "Project Manager", "Acme")
+    assert result == (1, "Title", "Company")
 
 def test_request_fields_mock_request_exception():
     with patch("requests.get", side_effect=requests.exceptions.RequestException("connection error")):

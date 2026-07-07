@@ -70,7 +70,7 @@ async def test_request_fields_mock_success():
     with patch("httpx2.AsyncClient") as mock_client:
         mock_client.return_value.__aenter__.return_value.get = AsyncMock(return_value=mock_response)
         result = await request_fields(test_page_id)
-    assert result == (1, "Project Manager", "Acme")
+    assert result == (1, "Title", "Company")
 
 async def test_request_fields_mock_request_exception():
     with patch("httpx2.AsyncClient") as mock_client:

@@ -87,7 +87,7 @@ FastForge can reduce documentation bottlenecks across various departments simult
 ## Supported Integrations
 
 | Layer | Current Support |
-|---|---|
+| --- | --- |
 | Database | Notion |
 | Document Storage | Google Drive |
 | Document Format | Google Docs |
@@ -101,7 +101,7 @@ FastForge can reduce documentation bottlenecks across various departments simult
 ## Technical Architecture
 
 | Component | Tool | Rationale |
-|---|---|---|
+| --- | --- | --- |
 | Database | Notion | Free API; well-structured for project and content management |
 | Document Storage | Google Drive / Docs | Free API; dynamic and programmatically updatable |
 | AI Model | Google Gemini Flash | Free API tier; strong instruction-following; structured JSON output |
@@ -114,7 +114,7 @@ FastForge can reduce documentation bottlenecks across various departments simult
 
 ### Flow Diagram
 
-```
+```bash
 Notion (Webhook) ──► FastForge API ──► Google Gemini
                           │                  │
                           │         Structured JSON Response

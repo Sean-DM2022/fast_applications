@@ -25,6 +25,23 @@ from core.config import get_credentials, get_drive_service, get_docs_service, lo
 # --- Initial Setup ---
 app = Flask(__name__)
 
+# --- Sync Handle Response ---
+def handle_response(response):
+    try:
+        response.raise_for_status() # Catch 4xx & 5xx HTTP codes
+        try:
+            data = response.json() # Response received. Now check if usable.
+            return data
+        except json.JSONDecodeError:
+            logger.error(f"Invalid JSON: {response.text}")
+            return None
+    except requests.exceptions.HTTPError as e:
+        status = e.response.status_code
+        if status >= 500:
+            raise RetryableError(f"Server error [{status}]")
+        else:
+            raise ClientError(f"Client error [{status}]: {e.response.text}")
+
 # --- Helper Functions ---
 def verify_notion_signature(request):
     logger.info("Verifying signature...")
@@ -46,6 +63,7 @@ def verify_notion_signature(request):
     ).hexdigest()
     return hmac.compare_digest(weave, yarn)
 
+@base_retry
 def request_content(page_id): # Request page content
     url = f"https://api.notion.com/v1/pages/{page_id}/markdown"
     headers = {
@@ -53,26 +71,16 @@ def request_content(page_id): # Request page content
         "Authorization": f"Bearer {DATABASE_ACCESS_TOKEN}"
     }
     logger.debug("Requesting page contents...")
-    try:
-        response = requests.get(url, headers=headers, timeout=10)
-        logger.debug(f"Notion [{response.status_code}]: {response.text}")
-        response.raise_for_status()
-        logger.info("Response received! Parsing for page contents...")
-        try:
-            data = response.json()
-            page_content = data.get("markdown")
-            logger.info("Successfully saved page contents!")
-            return page_content
-
-        except json.JSONDecodeError:
-            logger.error("Response is not valid JSON")
-            return None
-            
-    except requests.exceptions.RequestException as e:
-        logger.error(f"HTTP error: {e}")
+    response = requests.get(url=url, headers=headers, timeout=10)
+    data = handle_response(response)
+    if data is None:
         return None
+    page_content = data.get("markdown")
+    logger.info("Successfully saved page contents!")
+    return page_content
 
 # I am using notion as my database. The fields are deeply embedded in the json files.
+@base_retry
 def request_fields(page_id): # Request and save additional fields
     url = f"https://api.notion.com/v1/pages/{page_id}"
     headers = {
@@ -80,34 +88,17 @@ def request_fields(page_id): # Request and save additional fields
         "Authorization": f"Bearer {DATABASE_ACCESS_TOKEN}"
     }
     logger.info("Sending GET request for additional fields...")
-    try:
-        response = requests.get(url, headers=headers, timeout=10)
-        logger.debug(f"Notion GET Request [{response.status_code}]: {response.text}")
-        response.raise_for_status()
-        logger.info("Response received! Parsing...")
-        try:
-            data = response.json()
-            record_id = data.get("properties").get("ID").get("unique_id").get("number")
-            doc_heading = data.get("properties").get("title").get("rich_text")[0].get("plain_text")
-            company = data.get("properties").get("company").get("rich_text")[0].get("plain_text")
-            logger.info("Successfully saved page properties!")
-            return record_id, doc_heading, company
-
-        except json.JSONDecodeError:
-            logger.error("Response is not valid JSON")
-            return None
-
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Request failed: {e}")
+    response = requests.get(url, headers=headers, timeout=10)
+    data = handle_response(response)
+    if data is None:
         return None
+    record_id = data.get("properties").get("ID").get("unique_id").get("number")
+    doc_heading = data.get("properties").get("title").get("rich_text")[0].get("plain_text")
+    company = data.get("properties").get("company").get("rich_text")[0].get("plain_text")
+    logger.info("Successfully saved page properties!")
+    return record_id, doc_heading, company
 
-
-    # Return URL
-    tailored_doc_url = f"https://docs.google.com/document/d/{new_doc_id}"
-    logger.info(f"Tailored document created: {tailored_doc_url}")
-    return tailored_doc_url
-
-
+@base_retry
 def send_payload(page_id, payload): # Push API call to Notion
     url = f"https://api.notion.com/v1/pages/{page_id}"
     headers = {
@@ -117,10 +108,10 @@ def send_payload(page_id, payload): # Push API call to Notion
     }
     logger.info("Sending PATCH request")
     response = requests.patch(url, json=payload, headers=headers) # Returns an updated JSON for the page
-    logger.debug(f"Notion PATCH Request [{response.status_code}]: {response.text}")
-    response.raise_for_status()
-    # Notion has an avg rate limit of 3 incoming requests per second
-    return response.json()
+    data = handle_response(response)
+    if data is None:
+        return None
+    return data
 
 
 # --- Main Webhook ---

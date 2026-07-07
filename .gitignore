@@ -11,5 +11,6 @@ api-response.json
 notion_sandbox.py
 test_request.http
 google_check.py
+test_tenacity.py
 
 __pycache__/

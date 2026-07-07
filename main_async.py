@@ -19,10 +19,27 @@ import hashlib
 
 # --- Helper Functions ---
 from core.helpers import extract_json_data, scrape_template, create_prompt, send_prompt, create_tailored_doc, create_payload
-from core.config import get_credentials, get_drive_service, get_docs_service, logger, DATABASE_ACCESS_TOKEN, NOTION_VERIFICATION_TOKEN
+from core.config import get_credentials, get_drive_service, get_docs_service, logger, base_retry, handle_response, RetryableError, ClientError, DATABASE_ACCESS_TOKEN, NOTION_VERIFICATION_TOKEN
 
 # --- Initial Setup ---
 app = FastAPI()
+
+# --- Async Handle Response ---
+async def handle_response(response):
+    try:
+        response.raise_for_status() # Catch 4xx & 5xx HTTP codes
+        try:
+            data = response.json() # Response received. Now check if usable.
+            return data
+        except json.JSONDecodeError:
+            logger.error(f"Invalid JSON: {response.text}")
+            return None
+    except httpx2.HTTPStatusError as e:
+        status = e.response.status_code
+        if status >= 500:
+            raise RetryableError(f"Server error [{status}]")
+        else:
+            raise ClientError(f"Client error [{status}]: {e.response.text}")
 
 # --- Unique Async Functions ---
 async def verify_notion_signature(request):
@@ -45,6 +62,7 @@ async def verify_notion_signature(request):
     ).hexdigest()
     return hmac.compare_digest(weave, yarn)
 
+@base_retry
 async def request_content(page_id): # Request page content
     url = f"https://api.notion.com/v1/pages/{page_id}/markdown"
     headers = {
@@ -53,30 +71,16 @@ async def request_content(page_id): # Request page content
     }
     logger.debug("Requesting page contents...")
     async with httpx2.AsyncClient() as client:
-        try:
-            response = await client.get(url, headers=headers, timeout=10)
-            logger.debug(f"Notion [{response.status_code}]: {response.text}")
-            response.raise_for_status()
-            logger.info("Response received! Parsing for page contents...")
-            try:
-                data = response.json()
-                page_content = data.get("markdown")
-                logger.info("Successfully saved page contents!")
-                return page_content
-
-            except json.JSONDecodeError:
-                logger.error("Response is not valid JSON")
-                return None
-                
-        except httpx2.HTTPStatusError as e:
-            logger.error(f"HTTP error: {e}")
+        response = await client.get(url=url, headers=headers, timeout=10)
+        data = await handle_response(response)
+        if data is None:
             return None
-
-        except httpx2.RequestError as e:
-            logger.error(f"Request failed: {e}")
-            return None
+        page_content = data.get("markdown")
+        logger.info("Successfully saved page contents!")
+        return page_content
 
 # I am using notion as my database. The fields are deeply embedded in the json files.
+@base_retry
 async def request_fields(page_id): # Request and save additional fields
     url = f"https://api.notion.com/v1/pages/{page_id}"
     headers = {
@@ -85,32 +89,17 @@ async def request_fields(page_id): # Request and save additional fields
     }
     logger.info("Sending GET request for additional fields...")
     async with httpx2.AsyncClient() as client:
-        try:
-            response = await client.get(url, headers=headers, timeout=10)
-            logger.debug(f"Notion GET Request [{response.status_code}]: {response.text}")
-            response.raise_for_status()
-            logger.info("Response received! Parsing...")
-            try:
-                data = response.json()
-                record_id = data.get("properties").get("ID").get("unique_id").get("number")
-                doc_heading = data.get("properties").get("title").get("rich_text")[0].get("plain_text")
-                company = data.get("properties").get("company").get("rich_text")[0].get("plain_text")
-                logger.info("Successfully saved page properties!")
-                return record_id, doc_heading, company
-
-            except json.JSONDecodeError:
-                logger.error("Response is not valid JSON")
-                return None
-
-        except httpx2.HTTPStatusError as e:
-            logger.error(f"HTTP error: {e}")
+        response = await client.get(url, headers=headers, timeout=10)
+        data = await handle_response(response)
+        if data is None:
             return None
+        record_id = data.get("properties").get("ID").get("unique_id").get("number")
+        doc_heading = data.get("properties").get("title").get("rich_text")[0].get("plain_text")
+        company = data.get("properties").get("company").get("rich_text")[0].get("plain_text")
+        logger.info("Successfully saved page properties!")
+        return record_id, doc_heading, company
 
-        except httpx2.RequestError as e:
-            logger.error(f"Request failed: {e}")
-            return None
-
-
+@base_retry
 async def send_payload(page_id, payload): # Push API call to Notion
     url = f"https://api.notion.com/v1/pages/{page_id}"
     headers = {
@@ -120,11 +109,11 @@ async def send_payload(page_id, payload): # Push API call to Notion
     }
     logger.info("Sending PATCH request")
     async with httpx2.AsyncClient() as client:
-        response = await client.patch(url, json=payload, headers=headers) # Returns an updated JSON for the page
-        logger.debug(f"Notion PATCH Request [{response.status_code}]: {response.text}")
-        # response.raise_for_status()
-        # Notion has an avg rate limit of 3 incoming requests per second
-        return response.json()
+        response = await client.patch(url, json=payload, headers=headers, timeout=10)
+        data = await handle_response(response)
+        if data is None:
+            return None
+        return data
 
 
 # --- Main Webhook ---

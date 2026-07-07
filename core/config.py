@@ -14,6 +14,10 @@ from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request as GoogleRequest
 from googleapiclient.discovery import build
 import logging
+import requests
+import httpx2
+import json
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 # --- Logging Settings ---
 logging.basicConfig(level=logging.WARNING) # DEBUG > INFO > WARNING > ERROR > CRITICAL
@@ -52,3 +56,41 @@ def get_drive_service(creds):
 def get_docs_service(creds):
     docs_service = build("docs", "v1", credentials=creds)
     return docs_service
+
+
+### Tenacity Setup Start
+# --- Custom Exceptions ---
+class RetryableError(Exception): # Timeouts, connection failures, 5xx — retry
+    pass
+
+class ClientError(Exception): # 4xx — don't retry
+    pass
+
+
+RETRYABLE = (
+    RetryableError,
+    httpx2.TimeoutException,
+    httpx2.ConnectError,
+    requests.exceptions.ConnectionError,
+    requests.exceptions.Timeout
+)
+
+def log_retry(retry_state):
+    exc = retry_state.outcome.exception()
+    logger.warning(f"Attempt {retry_state.attempt_number} failed [{type(exc).__name__}]: Retrying...")
+
+def retry_error(retry_state):
+    exc = retry_state.outcome.exception()
+    logger.error(f"Retry attempts exhausted [{type(exc).__name__}]: {exc}")
+    return None
+
+# --- Retry Decorator ---
+def base_retry(func):
+    return retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=2, min=2, max=30),
+        retry=retry_if_exception_type(RETRYABLE), # This will catch Timeout and ConnectionError exceptions
+        before_sleep=log_retry,
+        retry_error_callback=retry_error
+    )(func)
+### Tenacity Setup End
