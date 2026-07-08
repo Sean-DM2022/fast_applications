@@ -37,5 +37,5 @@ projects:
         sync: false
       region: oregon
       buildCommand: pip install -r requirements.txt
-      startCommand: gunicorn main_sync:app --timeout 120
+      startCommand: gunicorn -k uvicorn.workers.UvicornWorker main_async:app --timeout 120
       autoDeployTrigger: commit
