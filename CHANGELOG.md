@@ -4,7 +4,9 @@ Documented iteration changes
 
 ---
 
-## [v1.1] Async Release - 2026-06-13
+## [v1.1] Async Release - 2026-07-07
+
+This release features several significant updates:
 
 1. Revamped repo architecture to lessen clutter
     - Files and folders renamed
@@ -12,13 +14,16 @@ Documented iteration changes
 2. The main script now has a **sync** and **async** version
    - Flask and Requests library replaced by FastAPI and HTTPX in the **async** version
 3. Added `INSTALL.md` for detailed instructions
-4. Greater exception handling
-    - Retry loop added for the following exceptions:
+4. Expanded exception handling and pytest-suite
+    - Implemented [tenacity](https://github.com/jd/tenacity) library
+    - Retry decorator with exponential backoff - see [config.py](core/config.py)
+    - Soft failure handling for **Recoverable errors**:
         - Timeouts
         - Connection errors
         - 5xx HTTP errors
-    - 4xx errors
-        - Note that 429 errors (Too Many Requests) will not be included in the retry loop at this time
+    - Fail-fast behaviour for **Non-recoverable errors**:
+        - 4xx HTTP errors
+        - Includes 429 errors (Too Many Requests) at this time
 
 ---
 
