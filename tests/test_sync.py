@@ -32,15 +32,14 @@ test_page_id = "3123e484e34b8019bd4de26a14d50d72"
 
 def test_request_content_mock_success():
     mock_response = MagicMock()
-    mock_response.raise_for_status = MagicMock()  # No-op; simulates 200 OK
     mock_response.json.return_value = {"markdown": "# Software\n\nTitle section..."}
     with patch("requests.get", return_value=mock_response) as mock_get:
         result = request_content(test_page_id)
     mock_get.assert_called_once()
     assert result == "# Software\n\nTitle section..."
 
-def test_request_content_mock_request_exception():
-    with patch("requests.get", side_effect=requests.exceptions.RequestException("timeout")):
+def test_request_content_timeout():
+    with patch("requests.get", side_effect=requests.exceptions.Timeout("timeout")):
         result = request_content(test_page_id)
     assert result is None
 
@@ -73,8 +72,8 @@ def test_request_fields_mock_success():
     mock_get.assert_called_once()
     assert result == (1, "Title", "Company")
 
-def test_request_fields_mock_request_exception():
-    with patch("requests.get", side_effect=requests.exceptions.RequestException("connection error")):
+def test_request_fields_timeout():
+    with patch("requests.get", side_effect=requests.exceptions.Timeout("timeout")):
         result = request_fields(test_page_id)
     assert result is None
 
@@ -136,3 +135,4 @@ def test_send_payload_mock_success():
 
 # @pytest.mark.skip(reason="Real API call - run manually only")
 # def test_send_payload_real():
+

@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 # --- Import functions from script ---
 from core.helpers import extract_json_data, scrape_template, create_prompt, send_prompt, create_tailored_doc, create_payload
-from core.config import get_credentials, get_drive_service, get_docs_service
+from core.config import get_credentials, get_drive_service, get_docs_service, base_retry, RetryableError, ClientError
 
 creds = get_credentials()
 drive_service = get_drive_service(creds)

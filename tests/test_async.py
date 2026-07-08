@@ -12,8 +12,9 @@ import httpx2
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # --- Import functions from script ---
+from core.config import base_retry, RetryableError, ClientError
 from core.helpers import extract_json_data
-from main_async import app, request_content, request_fields, send_payload  # FastAPI client
+from main_async import app, handle_response, request_content, request_fields, send_payload  # FastAPI client
 
 def test_helpers_imported_from_async():
     result = extract_json_data({"entity": {"id": "abc123"}})
@@ -27,6 +28,9 @@ def test_async_client():
     # 404 would mean client is offline
 
 
+
+
+
 # --- request_content ---
 test_page_id = "3123e484e34b8019bd4de26a14d50d72"
 
@@ -34,23 +38,47 @@ async def test_request_content_mock_success():
     mock_response = MagicMock()
     mock_response.json.return_value = {"markdown": "# Software\n\nTitle section..."}
     with patch("httpx2.AsyncClient") as mock_client:
-        mock_client.return_value.__aenter__.return_value.get = AsyncMock(return_value=mock_response)
+        mock_get = AsyncMock(return_value=mock_response)
+        mock_client.return_value.__aenter__.return_value.get = mock_get
         result = await request_content(test_page_id)
     assert result == "# Software\n\nTitle section..."
 
-async def test_request_content_mock_request_exception():
-    with patch("httpx2.AsyncClient") as mock_client:
-        mock_client.return_value.__aenter__.return_value.get = AsyncMock(side_effect=httpx2.RequestError("timeout"))
-        result = await request_content(test_page_id)
-    assert result is None
-
-async def test_request_content_mock_invalid_json():
+async def test_request_content_4xx():
+        # This test NEEDS to touch the handle_response function
+        # Constructing the response that will be read by handle_response
+        # Needs to mock the raise_for_status behavior
+    mock_error_response = MagicMock()
+    mock_error_response.status_code = 404
+    mock_error_response.text = "Not Found"
     mock_response = MagicMock()
-    mock_response.json.side_effect = json.JSONDecodeError("msg", "doc", 0)
+    mock_response.raise_for_status.side_effect = httpx2.HTTPStatusError(
+        message="Client error",
+        request=MagicMock(),
+        response=mock_error_response
+    )   # From http2x documentation:  class HTTPStatusError(message, *, request, response)
     with patch("httpx2.AsyncClient") as mock_client:
-        mock_client.return_value.__aenter__.return_value.get = AsyncMock(return_value=mock_response)
+        mock_get = AsyncMock(return_value=mock_response)
+        mock_client.return_value.__aenter__.return_value.get = mock_get
+        with pytest.raises(ClientError):
+            await request_content(test_page_id)
+    assert mock_get.call_count == 1
+
+async def test_request_content_5xx():
+    mock_error_response = MagicMock()
+    mock_error_response.status_code = 503
+    mock_error_response.text = "Service Unavailable"
+    mock_response = MagicMock()
+    mock_response.raise_for_status.side_effect = httpx2.HTTPStatusError(
+        message="Server error",
+        request=MagicMock(),
+        response=mock_error_response
+    )
+    with patch("httpx2.AsyncClient") as mock_client:
+        mock_get = AsyncMock(return_value=mock_response)
+        mock_client.return_value.__aenter__.return_value.get = mock_get
         result = await request_content(test_page_id)
     assert result is None
+    assert mock_get.call_count == 3 
 
 @pytest.mark.skip(reason="Real API call - run manually only") # Has passed
 async def test_request_content_real():
@@ -72,13 +100,13 @@ async def test_request_fields_mock_success():
         result = await request_fields(test_page_id)
     assert result == (1, "Title", "Company")
 
-async def test_request_fields_mock_request_exception():
+async def test_request_fields_timeout():
     with patch("httpx2.AsyncClient") as mock_client:
-        mock_client.return_value.__aenter__.return_value.get = AsyncMock(side_effect=httpx2.RequestError("timeout"))
+        mock_client.return_value.__aenter__.return_value.get = AsyncMock(side_effect=httpx2.TimeoutException("timeout"))
         result = await request_fields(test_page_id)
     assert result is None
 
-async def test_request_fields_mock_invalid_json():
+async def test_request_fields_invalid_json():
     mock_response = MagicMock()
     mock_response.json.side_effect = json.JSONDecodeError("msg", "doc", 0)
     with patch("httpx2.AsyncClient") as mock_client:
@@ -97,19 +125,20 @@ async def test_request_fields_real():
 
 
 # --- send_payload ---
-async def test_send_payload_mock_success():
-    mock_payload = {
-        "properties": {
-            "status": {
-                "status": { "name": "review_doc" },
-            },
-            "intro_paragraph": { "rich_text": [{ "text": { "content": "new_intro" } }] },
-            "term_analysis": { "rich_text": [{ "text": { "content": "term_analysis" } }] },
-            "gap_analysis": { "rich_text": [{ "text": { "content": "gap_analysis" } }] },
-            "tailored_doc_url": { "url": "tailored_doc_url" },
-            "highlights": { "rich_text": [{ "text": { "content": "highlights" } }] },
+mock_payload = {
+    "properties": {
+        "status": {
+            "status": { "name": "review_doc" },
         },
-    }
+        "intro_paragraph": { "rich_text": [{ "text": { "content": "new_intro" } }] },
+        "term_analysis": { "rich_text": [{ "text": { "content": "term_analysis" } }] },
+        "gap_analysis": { "rich_text": [{ "text": { "content": "gap_analysis" } }] },
+        "tailored_doc_url": { "url": "tailored_doc_url" },
+        "highlights": { "rich_text": [{ "text": { "content": "highlights" } }] },
+    },
+}
+
+async def test_send_payload_mock_success():
     mock_response = MagicMock()
     mock_response.json.return_value = {
         "object": "page",
@@ -122,13 +151,47 @@ async def test_send_payload_mock_success():
     assert result == mock_response.json.return_value
     assert result["id"] == "mock"
 
-# async def test_send_payload_mock_exception():
-    result = "TODO"
-    #assert result is None
+@pytest.mark.skip(reason="Real API call - run manually only")
+async def test_send_payload_real():
+    result = request_fields(mock_fields_payload)
+    assert result is not None
 
-# async def test_send_payload_mock_invalid_json():
-    result = "TODO"
-    #assert result is None
 
-# @pytest.mark.skip(reason="Real API call - run manually only")
-# async def test_send_payload_real():
+
+### handle_response: logic tests ###
+async def test_handle_response_success():
+    mock_response = MagicMock()
+    mock_response.json.return_value = {"key": "value"}
+    result = await handle_response(mock_response)
+    assert result == {"key": "value"}
+
+
+async def test_handle_response_invalid_json():
+    mock_response = MagicMock()
+    mock_response.json.side_effect = json.JSONDecodeError("msg", "doc", 0)
+    result = await handle_response(mock_response)
+    assert result is None
+
+
+async def test_handle_response_5xx():
+    error_response = MagicMock(status_code=503, text="Service Unavailable")
+    mock_response = MagicMock()
+    mock_response.raise_for_status.side_effect = httpx2.HTTPStatusError(
+        message="error",
+        request=MagicMock(),
+        response=error_response
+    )
+    with pytest.raises(RetryableError):
+        await handle_response(mock_response)
+
+
+async def test_handle_response_4xx():
+    error_response = MagicMock(status_code=404, text="Not Found")
+    mock_response = MagicMock()
+    mock_response.raise_for_status.side_effect = httpx2.HTTPStatusError(
+        message="error",
+        request=MagicMock(),
+        response=error_response
+    )
+    with pytest.raises(ClientError):
+        await handle_response(mock_response)

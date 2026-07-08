@@ -19,7 +19,7 @@ import hashlib
 
 # --- Helper Functions ---
 from core.helpers import extract_json_data, scrape_template, create_prompt, send_prompt, create_tailored_doc, create_payload
-from core.config import get_credentials, get_drive_service, get_docs_service, logger, base_retry, handle_response, RetryableError, ClientError, DATABASE_ACCESS_TOKEN, NOTION_VERIFICATION_TOKEN
+from core.config import get_credentials, get_drive_service, get_docs_service, logger, base_retry, RetryableError, ClientError, DATABASE_ACCESS_TOKEN, NOTION_VERIFICATION_TOKEN
 
 # --- Initial Setup ---
 app = FastAPI()
