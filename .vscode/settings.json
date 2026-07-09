@@ -12,5 +12,7 @@
         "strikethrough",
         "uvicorn",
         "venv"
-    ]
+    ],
+    "snyk.advanced.autoSelectOrganization": true,
+    "snyk.advanced.organization": "e77d20e0-7b30-4cc7-ad65-e0a4d3f08167"
 }
